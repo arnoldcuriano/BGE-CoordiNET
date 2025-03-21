@@ -5,6 +5,7 @@ const cors = require('cors');
 const session = require('express-session');
 const passport = require('passport');
 const authRoutes = require('./routes/auth');
+const MongoStore = require('connect-mongo');
 
 // Load environment variables
 dotenv.config();
@@ -24,6 +25,8 @@ app.use(
   session({
     secret: process.env.SESSION_SECRET,
     resave: false,
+
+    
     saveUninitialized: false,
     cookie: { 
       secure: false, // Set to true if using HTTPS
