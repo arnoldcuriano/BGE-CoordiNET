@@ -1,4 +1,8 @@
 const jwt = require('jsonwebtoken');
+const { OAuth2Client } = require('google-auth-library');
+
+const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
+
 
 const checkRole = (roles) => (req, res, next) => {
   const token = req.headers.authorization?.split(' ')[1];
@@ -17,5 +21,7 @@ const checkRole = (roles) => (req, res, next) => {
     res.status(400).json({ message: 'Invalid token.' });
   }
 };
+
+
 
 module.exports = checkRole;
