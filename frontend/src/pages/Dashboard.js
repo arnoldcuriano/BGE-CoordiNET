@@ -30,7 +30,7 @@ import BarChartIcon from '@mui/icons-material/BarChart';
 import DescriptionIcon from '@mui/icons-material/Description';
 import LayersIcon from '@mui/icons-material/Layers';
 import { useNavigate } from 'react-router-dom';
-import axios from 'axios'; // Add this import
+import axios from 'axios';
 
 // Define navigation items
 const NAVIGATION = [
@@ -91,7 +91,29 @@ export default function DashboardLayoutBasic() {
   const [mobileOpen, setMobileOpen] = React.useState(false);
   const [logoutLoading, setLogoutLoading] = React.useState(false);
   const [anchorEl, setAnchorEl] = React.useState(null);
+  const [loading, setLoading] = React.useState(true); // Add loading state
   const navigate = useNavigate();
+
+  // Check if the user is authenticated
+  React.useEffect(() => {
+    const checkAuth = async () => {
+      const authState = localStorage.getItem('isAuthenticated');
+      if (authState === 'true') {
+        setLoading(false); // User is authenticated
+      } else {
+        try {
+          await axios.get('http://localhost:5000/auth/user', { withCredentials: true });
+          localStorage.setItem('isAuthenticated', 'true'); // Update localStorage
+          setLoading(false);
+        } catch (error) {
+          localStorage.removeItem('isAuthenticated'); // Clear localStorage
+          navigate('/login'); // Redirect to Login if not authenticated
+        }
+      }
+    };
+
+    checkAuth();
+  }, [navigate]);
 
   const handleDrawerToggle = () => {
     setMobileOpen(!mobileOpen);
@@ -101,6 +123,7 @@ export default function DashboardLayoutBasic() {
     setLogoutLoading(true);
     axios.get('http://localhost:5000/auth/logout', { withCredentials: true })
       .then(() => {
+        localStorage.removeItem('isAuthenticated'); // Clear localStorage
         setLogoutLoading(false);
         navigate('/login');
       })
@@ -143,6 +166,22 @@ export default function DashboardLayoutBasic() {
       </List>
     </div>
   );
+
+  // Show loading state while checking authentication
+  if (loading) {
+    return (
+      <Box
+        sx={{
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'center',
+          height: '100vh',
+        }}
+      >
+        <CircularProgress />
+      </Box>
+    );
+  }
 
   return (
     <ThemeProvider theme={demoTheme}>

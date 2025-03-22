@@ -18,7 +18,9 @@ router.get(
     console.log('Google OAuth successful. Redirecting to dashboard.'); // Debugging
     console.log('Authenticated User:', req.user); // Log the authenticated user
     console.log('Session ID:', req.sessionID); // Log the session ID
-    res.redirect('http://localhost:3000/dashboard');
+
+    // Redirect to the frontend with a query parameter indicating successful login
+    res.redirect(`http://localhost:3000/dashboard?loginSuccess=true`);
   }
 );
 

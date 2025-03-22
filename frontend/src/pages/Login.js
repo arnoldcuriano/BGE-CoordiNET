@@ -1,11 +1,20 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Typography, TextField, Button, Link as MuiLink, Box, Divider } from '@mui/material';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { Public, Settings, ConfirmationNumber } from '@mui/icons-material';
 
 const Login = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const navigate = useNavigate();
+
+  // Check if the user is already authenticated
+  useEffect(() => {
+    const authState = localStorage.getItem('isAuthenticated');
+    if (authState === 'true') {
+      navigate('/dashboard'); // Redirect to Dashboard if authenticated
+    }
+  }, [navigate]);
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -33,11 +42,8 @@ const Login = () => {
           padding: { xs: '40px 20px', md: '60px 40px' },
           textAlign: 'center',
           order: { xs: 2, md: 1 }, 
-          
         }}
       >
-        
-        
         <Typography variant="h3" fontWeight="bold" gutterBottom>
           Welcome Back!
         </Typography>
@@ -170,8 +176,8 @@ const Login = () => {
             sx={{ mt: 2, textTransform: 'none', fontSize: '16px' }}
             startIcon={<img src="/images/icons8-google-48.png" alt="Google" style={{ width: '20px', height: '20px' }} />}
             onClick={() => window.location.href = 'http://localhost:5000/auth/google'} // Redirect to backend Google OAuth endpoint
-            >
-          Sign in with Google
+          >
+            Sign in with Google
           </Button>
 
           <Typography variant="body2" align="center" sx={{ mt: 3 }}>
