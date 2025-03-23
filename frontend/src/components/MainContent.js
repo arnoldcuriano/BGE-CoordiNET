@@ -1,29 +1,43 @@
 import React from 'react';
-import { Container, Typography, Paper, Box, Toolbar } from '@mui/material';
+import { Typography, Paper, Box } from '@mui/material';
 
-const MainContent = () => {
+const MainContent = ({ isCollapsed }) => {
   return (
     <Box
       component="main"
       sx={{
         flexGrow: 1,
+        width: { sm: isCollapsed ? `calc(100% - 64px)` : `calc(100% - 240px)` }, 
+        transition: (theme) =>
+          theme.transitions.create(['width'], {
+            easing: theme.transitions.easing.sharp,
+            duration: theme.transitions.duration.enteringScreen,
+          }),
+        // Ensure content starts at the top
+        minHeight: '100vh',
+        display: 'flex',
+        flexDirection: 'column',
+        justifyContent: 'flex-start',  // Align content to the start
+        gap: 2,  // Add slight spacing between sections
         p: 3,
-        width: { sm: `calc(100% - 240px)` },
+        '@media (min-width: 600px)': {
+          width: isCollapsed ? 'calc(100% - 64px)' : 'calc(100% - 240px)',
+        },
       }}
     >
-      <Toolbar />
-      <Container>
+      {/* Remove the Toolbar to prevent unnecessary spacing */}
+      <Box>
         <Typography variant="h4" gutterBottom>
           Dashboard
         </Typography>
         <Box sx={{ display: 'flex', gap: 3 }}>
           <Paper sx={{ p: 2, flex: 1 }}>
             <Typography variant="h6">Overview</Typography>
-            <Typography variant="body1">Users: 14k (+25%)</Typography>
-            <Typography variant="body1">Conversions: 325 (-25%)</Typography>
+            <Typography variant="body1">Users: 144 (+25%)</Typography>
+            <Typography variant="body1">Conversions: 325 (+25%)</Typography>
           </Paper>
           <Paper sx={{ p: 2, flex: 1 }}>
-            <Typography variant="h6">Sessions</Typography>
+            <Typography variant="h6">Questions</Typography>
             <Typography variant="body1">13,277 (+35%)</Typography>
           </Paper>
         </Box>
@@ -31,7 +45,7 @@ const MainContent = () => {
           <Typography variant="h6">Page Views and Downloads</Typography>
           <Typography variant="body1">1.3M (8%)</Typography>
         </Paper>
-      </Container>
+      </Box>
     </Box>
   );
 };
