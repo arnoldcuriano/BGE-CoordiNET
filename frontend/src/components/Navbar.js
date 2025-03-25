@@ -12,6 +12,7 @@ import {
   Typography,
   Tooltip,
 } from '@mui/material';
+import { styled } from '@mui/material/styles';
 import MenuIcon from '@mui/icons-material/Menu';
 import NotificationsIcon from '@mui/icons-material/Notifications';
 import Brightness4Icon from '@mui/icons-material/Brightness4'; // Dark mode icon
@@ -30,17 +31,32 @@ const Navbar = ({ isDarkMode, toggleTheme, handleDrawerToggle, user, handleLogou
     setAnchorEl(null);
   };
 
+  // ✅ Custom MaterialUISwitch with Icons
+  const MaterialUISwitch = styled('div')(({ theme }) => ({
+    display: 'flex',
+    alignItems: 'center',
+    gap: '8px',
+    cursor: 'pointer',
+    padding: '4px 12px',
+    borderRadius: '20px',
+    backgroundColor: isDarkMode ? '#333' : '#ccc',
+    transition: 'background 0.3s',
+    '&:hover': {
+      backgroundColor: isDarkMode ? '#555' : '#bbb',
+    }
+  }));
+
   return (
     <AppBar
       position="fixed"
       sx={{
         width: { 
           xs: '100%',
-          sm: isCollapsed ? `calc(100% - 64px)` : `calc(100% - 240px)` // Match sidebar's exact widths
+          sm: isCollapsed ? `calc(100% - 64px)` : `calc(100% - 240px)`
         },
         ml: { 
           xs: 0,
-          sm: isCollapsed ? '64px' : '240px' // Match sidebar's exact widths
+          sm: isCollapsed ? '64px' : '240px'
         },
         transition: theme => theme.transitions.create(['width', 'margin'], {
           easing: theme.transitions.easing.sharp,
@@ -71,12 +87,12 @@ const Navbar = ({ isDarkMode, toggleTheme, handleDrawerToggle, user, handleLogou
             </IconButton>
           </Tooltip>
 
+          {/* Switch with Icons */}
           <Tooltip title={isDarkMode ? 'Switch to Light Mode' : 'Switch to Dark Mode'}>
-            <Box sx={{ display: 'flex', alignItems: 'center' }}>
-              <IconButton color="inherit" onClick={toggleTheme}>
-                {isDarkMode ? <Brightness7Icon /> : <Brightness4Icon />}
-              </IconButton>
-            </Box>
+            <MaterialUISwitch onClick={toggleTheme}>
+              {isDarkMode ? <Brightness7Icon sx={{ color: '#ffb74d' }} /> : <Brightness4Icon sx={{ color: '#64b5f6' }} />}
+              <Typography variant="body2">{isDarkMode ? 'Light Mode' : 'Dark Mode'}</Typography>
+            </MaterialUISwitch>
           </Tooltip>
 
           <Tooltip title={user.displayName || 'User Menu'}>
@@ -115,6 +131,5 @@ const Navbar = ({ isDarkMode, toggleTheme, handleDrawerToggle, user, handleLogou
     </AppBar>
   );
 };
-
 
 export default Navbar;

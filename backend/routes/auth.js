@@ -15,9 +15,9 @@ router.get(
   '/google/callback',
   passport.authenticate('google', { failureRedirect: 'http://localhost:3000/login' }),
   (req, res) => {
-    console.log('Google OAuth successful. Redirecting to dashboard.'); // Debugging
-    console.log('Authenticated User:', req.user); // Log the authenticated user
-    console.log('Session ID:', req.sessionID); // Log the session ID
+    // console.log('Google OAuth successful. Redirecting to dashboard.'); // Debugging
+    // console.log('Authenticated User:', req.user); // Log the authenticated user
+    // console.log('Session ID:', req.sessionID); // Log the session ID
 
     // Redirect to the frontend with a query parameter indicating successful login
     res.redirect(`http://localhost:3000/dashboard?loginSuccess=true`);
@@ -36,6 +36,8 @@ router.get('/user', (req, res) => {
     firstName: req.user.firstName,
     lastName: req.user.lastName,
     displayName: req.user.displayName,
+    profilePicture: req.user.profilePicture,
+    role: req.user.role
   });
 });
 

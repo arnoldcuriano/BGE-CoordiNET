@@ -5,6 +5,7 @@ import CssBaseline from '@mui/material/CssBaseline';
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
 import ForgotPassword from './pages/ForgotPassword';
+import SuperAdminDashboard from './pages/SuperAdminDashboard'; // Import the Super Admin Dashboard
 import ProtectedRoute from './components/ProtectedRoute';
 
 function App() {
@@ -75,6 +76,16 @@ function App() {
             element={
               <ProtectedRoute>
                 <Dashboard isDarkMode={isDarkMode} toggleTheme={toggleTheme} />
+              </ProtectedRoute>
+            }
+          />
+
+          {/* Super Admin Dashboard Route (Only for Super Admin) */}
+          <Route
+            path="/superadmin-dashboard"
+            element={
+              <ProtectedRoute>
+                <SuperAdminDashboard isDarkMode={isDarkMode} toggleTheme={toggleTheme} />
               </ProtectedRoute>
             }
           />

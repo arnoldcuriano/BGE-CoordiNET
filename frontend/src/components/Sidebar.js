@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   Drawer,
   List,
@@ -19,37 +20,96 @@ import DashboardIcon from '@mui/icons-material/Dashboard';
 import PeopleIcon from '@mui/icons-material/People';
 import AssignmentIcon from '@mui/icons-material/Assignment';
 import InventoryIcon from '@mui/icons-material/Inventory';
+import AdminPanelSettingsIcon from '@mui/icons-material/AdminPanelSettings';
 import LogoutIcon from '@mui/icons-material/Logout';
 import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
 import ChevronRightIcon from '@mui/icons-material/ChevronRight';
 
-const Sidebar = ({ mobileOpen, handleDrawerToggle, isCollapsed, toggleCollapse, user, handleLogout, logoutLoading }) => {
+const Sidebar = ({ 
+  mobileOpen, 
+  handleDrawerToggle, 
+  isCollapsed, 
+  toggleCollapse, 
+  user = { displayName: '', profilePicture: '', role: 'viewer' },
+  handleLogout, 
+  logoutLoading 
+}) => {
   const theme = useTheme();
+  const navigate = useNavigate();
 
-
-  // Define navigation items
-  const navigationItems = [
+  // Base navigation items
+  const baseNavigationItems = [
     {
       segment: 'dashboard',
       title: 'Dashboard',
       icon: <DashboardIcon />,
+      onClick: () => navigate('/dashboard')
     },
     {
       segment: 'members',
       title: 'Members',
       icon: <PeopleIcon />,
+      onClick: () => navigate('/members')
     },
     {
       segment: 'project',
-      title: 'Project',
+      title: 'Projects',
       icon: <AssignmentIcon />,
+      onClick: () => navigate('/projects')
     },
     {
       segment: 'it-inventory',
-      title: 'IT Inventory System',
+      title: 'IT Inventory',
       icon: <InventoryIcon />,
-    },
+      onClick: () => navigate('/inventory')
+    }
   ];
+
+  // Super Admin specific items
+  const adminNavigationItems = user?.role === 'superadmin' ? [
+    {
+      segment: 'superadmin-dashboard',
+      title: 'Super Admin',
+      icon: <AdminPanelSettingsIcon />,
+      onClick: () => navigate('/superadmin-dashboard')
+    }
+  ] : [];
+
+  // Combine all navigation items
+  const navigationItems = [...baseNavigationItems, ...adminNavigationItems];
+
+  // List item component
+  const renderListItem = (item) => (
+    <Tooltip 
+      key={item.segment} 
+      title={isCollapsed ? item.title : ''} 
+      placement="right"
+      arrow
+    >
+      <ListItem 
+        button
+        onClick={item.onClick}
+        sx={{
+          '&:hover': {
+            backgroundColor: theme.palette.action.hover,
+          },
+          borderRadius: 1,
+          mx: 1,
+          my: 0.5
+        }}
+      >
+        <ListItemIcon sx={{ minWidth: '40px' }}>
+          {item.icon}
+        </ListItemIcon>
+        {!isCollapsed && (
+          <ListItemText 
+            primary={item.title} 
+            primaryTypographyProps={{ noWrap: true }}
+          />
+        )}
+      </ListItem>
+    </Tooltip>
+  );
 
   return (
     <Box
@@ -60,17 +120,20 @@ const Sidebar = ({ mobileOpen, handleDrawerToggle, isCollapsed, toggleCollapse, 
       }}
       aria-label="mailbox folders"
     >
-      {/* Drawer for mobile */}
+      {/* Mobile Drawer */}
       <Drawer
         variant="temporary"
         open={mobileOpen}
         onClose={handleDrawerToggle}
         ModalProps={{
-          keepMounted: true, // Better open performance on mobile.
+          keepMounted: true,
         }}
         sx={{
           display: { xs: 'block', sm: 'none' },
-          '& .MuiDrawer-paper': { boxSizing: 'border-box', width: 240 },
+          '& .MuiDrawer-paper': { 
+            boxSizing: 'border-box', 
+            width: 240,
+          },
         }}
       >
         <Toolbar>
@@ -80,27 +143,30 @@ const Sidebar = ({ mobileOpen, handleDrawerToggle, isCollapsed, toggleCollapse, 
         </Toolbar>
         <Divider />
         <List>
-          {navigationItems.map((item) => (
-            <ListItem button={true} key={item.segment}> {/* Ensure button is passed as a boolean */}
-              <ListItemIcon>{item.icon}</ListItemIcon>
-              <ListItemText primary={item.title} />
-            </ListItem>
-          ))}
+          {navigationItems.map(renderListItem)}
         </List>
         <Divider />
         <Box sx={{ p: 2, mt: 'auto' }}>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
             <Avatar alt={user.displayName} src={user.profilePicture} />
-            <Typography variant="body1">{user.displayName}</Typography>
+            <Typography variant="body1" noWrap>
+              {user.displayName}
+            </Typography>
           </Box>
-          <IconButton onClick={handleLogout} sx={{ mt: 2 }}>
+          <IconButton 
+            onClick={handleLogout} 
+            sx={{ mt: 2 }}
+            disabled={logoutLoading}
+          >
             {logoutLoading ? <CircularProgress size={24} /> : <LogoutIcon />}
-            <Typography variant="body2" sx={{ ml: 1 }}>Logout</Typography>
+            <Typography variant="body2" sx={{ ml: 1 }}>
+              Logout
+            </Typography>
           </IconButton>
         </Box>
       </Drawer>
 
-      {/* Drawer for desktop */}
+      {/* Desktop Drawer */}
       <Drawer
         variant="permanent"
         sx={{
@@ -126,24 +192,29 @@ const Sidebar = ({ mobileOpen, handleDrawerToggle, isCollapsed, toggleCollapse, 
         </Toolbar>
         <Divider />
         <List>
-          {navigationItems.map((item) => (
-            <Tooltip key={item.segment} title={item.title} placement="right">
-              <ListItem button={true}> {/* Ensure button is passed as a boolean */}
-                <ListItemIcon>{item.icon}</ListItemIcon>
-                {!isCollapsed && <ListItemText primary={item.title} />}
-              </ListItem>
-            </Tooltip>
-          ))}
+          {navigationItems.map(renderListItem)}
         </List>
         <Divider />
         <Box sx={{ p: 2, mt: 'auto' }}>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
             <Avatar alt={user.displayName} src={user.profilePicture} />
-            {!isCollapsed && <Typography variant="body1">{user.displayName}</Typography>}
+            {!isCollapsed && (
+              <Typography variant="body1" noWrap>
+                {user.displayName}
+              </Typography>
+            )}
           </Box>
-          <IconButton onClick={handleLogout} sx={{ mt: 2 }}>
+          <IconButton 
+            onClick={handleLogout} 
+            sx={{ mt: 2 }}
+            disabled={logoutLoading}
+          >
             {logoutLoading ? <CircularProgress size={24} /> : <LogoutIcon />}
-            {!isCollapsed && <Typography variant="body2" sx={{ ml: 1 }}>Logout</Typography>}
+            {!isCollapsed && (
+              <Typography variant="body2" sx={{ ml: 1 }}>
+                Logout
+              </Typography>
+            )}
           </IconButton>
         </Box>
       </Drawer>

@@ -37,13 +37,13 @@ const MainContent = ({ isCollapsed }) => {
             <Typography variant="body1">Conversions: 325 (+25%)</Typography>
           </Paper>
           <Paper sx={{ p: 2, flex: 1 }}>
-            <Typography variant="h6">Questions</Typography>
+            <Typography variant="h6">Lorem Ipsum</Typography>
             <Typography variant="body1">13,277 (+35%)</Typography>
           </Paper>
         </Box>
         <Paper sx={{ p: 2, mt: 3 }}>
-          <Typography variant="h6">Page Views and Downloads</Typography>
-          <Typography variant="body1">1.3M (8%)</Typography>
+          <Typography variant="h6">Events and Management</Typography>
+          <Typography variant="body1">Lorem Ipsum</Typography>
         </Paper>
       </Box>
     </Box>

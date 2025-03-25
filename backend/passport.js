@@ -16,7 +16,7 @@ passport.use(
     async (accessToken, refreshToken, profile, done) => {
       try {
         console.log('Google OAuth Profile:', profile); // Log the profile
-
+        
         // Extract email and domain
         const email = profile.emails[0].value;
         const domain = email.split('@')[1];
@@ -39,19 +39,25 @@ passport.use(
         // Check if user already exists
         let user = await User.findOne({ googleId: profile.id });
 
+       // In the GoogleStrategy callback, ensure role is set:
         if (!user) {
-          // Create new Super Admin user
           user = new User({
             googleId: profile.id,
             email: email,
-            firstName: profile.name.givenName, // Save first name from Google profile
-            lastName: profile.name.familyName, // Save last name from Google profile
-            displayName: profile.displayName, // Save display name from Google profile
-            role: 'superadmin', // Assign Super Admin role
-            isApproved: true, // Auto-approve Super Admin
+            firstName: profile.name.givenName,
+            lastName: profile.name.familyName,
+            displayName: profile.displayName,
+            profilePicture: profile.photos?.[0]?.value, // Add profile picture
+            role: isSuperAdmin ? 'superadmin' : 'viewer', // Explicit role assignment
+            isApproved: isSuperAdmin
           });
           await user.save();
-        }
+        } else {
+  // Update existing user if needed
+  user.role = isSuperAdmin ? 'superadmin' : user.role;
+  await user.save();
+}
+        
 
         done(null, user);
       } catch (error) {
@@ -74,5 +80,9 @@ passport.deserializeUser(async (id, done) => {
     done(error, null);
   }
 });
+
+console.log('GOOGLE_CLIENT_ID:', process.env.GOOGLE_CLIENT_ID);
+console.log('GOOGLE_CLIENT_SECRET:', process.env.GOOGLE_CLIENT_SECRET);
+
 
 module.exports = passport;
