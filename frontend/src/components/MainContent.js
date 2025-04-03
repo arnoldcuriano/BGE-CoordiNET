@@ -29,7 +29,9 @@ const MainContent = ({ isCollapsed }) => {
       <Box>
         <Typography variant="h4" gutterBottom>
           Dashboard
+          
         </Typography>
+        
         <Box sx={{ display: 'flex', gap: 3 }}>
           <Paper sx={{ p: 2, flex: 1 }}>
             <Typography variant="h6">Overview</Typography>

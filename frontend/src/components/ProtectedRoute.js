@@ -1,57 +1,46 @@
-// Frontend: components/ProtectedRoute.js
-import React, { useEffect, useState } from 'react';
-import { Navigate } from 'react-router-dom';
-import axios from 'axios';
+import React from 'react';
+import { Navigate, useSearchParams } from 'react-router-dom';
+import { CircularProgress, Box } from '@mui/material';
 
-const ProtectedRoute = ({ children, isAuthenticatedPage }) => {
-  const [isAuthenticated, setIsAuthenticated] = useState(null);
-  const [loading, setLoading] = useState(true);
+const ProtectedRoute = ({ children, isPublic = false, user }) => {
+  const [searchParams] = useSearchParams();
+  const googleSuccess = searchParams.get('loginSuccess');
 
-  useEffect(() => {
-    const checkAuth = async () => {
-      const authState = localStorage.getItem('isAuthenticated');
-      console.log('localStorage isAuthenticated:', authState); // Debugging
+  // If user is undefined (initial load before auth check in App.js), show loading
+  if (user === undefined) {
+    return (
+      <Box
+        sx={{
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'center',
+          height: '100vh',
+        }}
+      >
+        <CircularProgress />
+      </Box>
+    );
+  }
 
-      if (authState === 'true') {
-        setIsAuthenticated(true);
-        setLoading(false);
-      } else {
-        try {
-          const response = await axios.get('http://localhost:5000/auth/user', { withCredentials: true });
-          console.log('Backend response:', response.data); // Debugging
-          localStorage.setItem('isAuthenticated', 'true'); // Update localStorage
-          setIsAuthenticated(true);
-          setLoading(false);
-        } catch (error) {
-          console.error('Authentication error:', error); // Debugging
-          localStorage.removeItem('isAuthenticated'); // Clear localStorage
-          setIsAuthenticated(false);
-          setLoading(false);
-        }
+  // Handle public routes (login, forgot-password)
+  if (isPublic) {
+    // If authenticated, redirect based on role after Google auth success
+    if (user) {
+      if (googleSuccess) {
+        return (
+          <Navigate
+            to={user.role === 'superadmin' ? '/superadmin-dashboard' : '/dashboard'}
+            replace
+          />
+        );
       }
-    };
-
-    checkAuth();
-  }, []);
-
-  if (loading) {
-    return <div>Loading...</div>; // Show a loading spinner or skeleton
+      return <Navigate to="/dashboard" replace />;
+    }
+    return children; // Not authenticated, render public page (e.g., Login)
   }
 
-  // If the page is for authenticated users (e.g., Dashboard)
-  if (!isAuthenticatedPage && !isAuthenticated) {
-    console.log('Redirecting to /login'); // Debugging
-    return <Navigate to="/login" replace />;
-  }
-
-  // If the page is for unauthenticated users (e.g., Login)
-  if (isAuthenticatedPage && isAuthenticated) {
-    console.log('Redirecting to /dashboard'); // Debugging
-    return <Navigate to="/dashboard" replace />;
-  }
-
-  // Allow access to the requested page
-  return children;
+  // Handle protected routes
+  return user ? children : <Navigate to="/login" replace />;
 };
 
 export default ProtectedRoute;

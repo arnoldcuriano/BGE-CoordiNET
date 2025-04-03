@@ -95,11 +95,11 @@ const Navbar = ({ isDarkMode, toggleTheme, handleDrawerToggle, user, handleLogou
             </MaterialUISwitch>
           </Tooltip>
 
-          <Tooltip title={user.displayName || 'User Menu'}>
+          <Tooltip title={user?.displayName || `${user?.firstName} ${user?.lastName}`}>
             <IconButton color="inherit" onClick={handleMenuOpen}>
               <Avatar 
-                alt={user.displayName} 
-                src={user.profilePicture}
+                alt={user?.displayName || `${user?.firstName} ${user?.lastName}`} 
+                src={user?.profilePicture}
                 sx={{ width: 32, height: 32 }}
               />
             </IconButton>

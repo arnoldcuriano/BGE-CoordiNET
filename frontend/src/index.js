@@ -1,34 +1,19 @@
-import React, { useContext } from 'react';
+import React from 'react';
 import { createRoot } from 'react-dom/client';
 import App from './App';
-import { ThemeProvider, ThemeContext } from './context/ThemeContext';
+import { ThemeProvider } from './context/ThemeContext';
 import './styles/global.css';
 import './styles/lightTheme.css';
+import axios from 'axios';
 
-const Root = () => {
-  const { isDarkMode } = useContext(ThemeContext);
-
-  React.useEffect(() => {
-    if (isDarkMode) {
-      document.body.classList.add('dark-theme');
-      document.body.classList.remove('light-theme');
-    } else {
-      document.body.classList.add('light-theme');
-      document.body.classList.remove('dark-theme');
-    }
-  }, [isDarkMode]);
-
-  return (
-    <React.StrictMode>
-      <App />
-    </React.StrictMode>
-  );
-};
+// Configure axios defaults
+axios.defaults.withCredentials = true;
+axios.defaults.baseURL = 'http://localhost:5000';
 
 const container = document.getElementById('root');
 const root = createRoot(container);
 root.render(
   <ThemeProvider>
-    <Root />
+    <App />
   </ThemeProvider>
 );

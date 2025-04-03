@@ -1,24 +1,89 @@
 import React, { useState, useEffect } from 'react';
-import { Typography, TextField, Button, Link as MuiLink, Box, Divider } from '@mui/material';
-import { Link, useNavigate } from 'react-router-dom';
+import { Typography, TextField, Button, Link as MuiLink, Box, Divider, CircularProgress } from '@mui/material';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { Public, Settings, ConfirmationNumber } from '@mui/icons-material';
+import axios from 'axios';
 
 const Login = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [googleLoading, setGoogleLoading] = useState(false);
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
 
-  // Check if the user is already authenticated
+  // Check for successful Google auth redirect
   useEffect(() => {
-    const authState = localStorage.getItem('isAuthenticated');
-    if (authState === 'true') {
-      navigate('/dashboard'); // Redirect to Dashboard if authenticated
-    }
+    const checkAuthAfterRedirect = async () => {
+      const loginSuccess = searchParams.get('loginSuccess');
+      if (loginSuccess) {
+        try {
+          setGoogleLoading(true);
+          // Give the session time to establish
+          await new Promise(resolve => setTimeout(resolve, 500));
+          
+          const response = await axios.get('http://localhost:5000/auth/user', {
+            withCredentials: true
+          });
+          
+          if (response.data) {
+            localStorage.setItem('isAuthenticated', 'true');
+            navigate('/dashboard', { replace: true });
+          }
+        } catch (error) {
+          console.error('Post-auth verification failed:', error);
+        } finally {
+          setGoogleLoading(false);
+        }
+      }
+    };
+
+    checkAuthAfterRedirect();
+  }, [searchParams, navigate]);
+
+  // Initial auth check
+  useEffect(() => {
+    const checkInitialAuth = async () => {
+      const authState = localStorage.getItem('isAuthenticated');
+      if (authState === 'true') {
+        try {
+          const response = await axios.get('http://localhost:5000/auth/user', {
+            withCredentials: true
+          });
+          if (response.data) {
+            navigate('/dashboard', { replace: true });
+          }
+        } catch (error) {
+          localStorage.removeItem('isAuthenticated');
+        }
+      }
+    };
+    checkInitialAuth();
   }, [navigate]);
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    console.log('Login:', { email, password });
+    setLoading(true);
+    try {
+      await axios.post('http://localhost:5000/auth/login', {
+        email,
+        password
+      }, {
+        withCredentials: true
+      });
+      localStorage.setItem('isAuthenticated', 'true');
+      navigate('/dashboard', { replace: true });
+    } catch (error) {
+      console.error('Login error:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleGoogleLogin = () => {
+    setGoogleLoading(true);
+    // Use window.location.replace to prevent history stack issues
+    window.location.replace('http://localhost:5000/auth/google');
   };
 
   return (
@@ -171,14 +236,16 @@ const Login = () => {
           <Divider sx={{ my: '20px' }}>OR</Divider>
 
           <Button
-            variant="outlined"
-            fullWidth
-            sx={{ mt: 2, textTransform: 'none', fontSize: '16px' }}
-            startIcon={<img src="/images/icons8-google-48.png" alt="Google" style={{ width: '20px', height: '20px' }} />}
-            onClick={() => window.location.href = 'http://localhost:5000/auth/google'} // Redirect to backend Google OAuth endpoint
-          >
-            Sign in with Google
-          </Button>
+          variant="outlined"
+          fullWidth
+          sx={{ mt: 2, textTransform: 'none', fontSize: '16px' }}
+          startIcon={googleLoading ? <CircularProgress size={20} /> : 
+            <img src="/images/icons8-google-48.png" alt="Google" style={{ width: '20px', height: '20px' }} />}
+          onClick={handleGoogleLogin}
+          disabled={googleLoading}
+        >
+          {googleLoading ? 'Signing in...' : 'Sign in with Google'}
+        </Button>
 
           <Typography variant="body2" align="center" sx={{ mt: 3 }}>
             Don’t have an account?{' '}

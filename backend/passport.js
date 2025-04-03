@@ -1,10 +1,13 @@
 const passport = require('passport');
 const GoogleStrategy = require('passport-google-oauth20').Strategy;
 const User = require('./models/User');
+const LocalStrategy = require('passport-local').Strategy;
+const bcrypt = require('bcryptjs');
 
 // Allowed email domains
 const allowedDomains = ['bgecorp.com', 'beglobalecommercecorp.com'];
 
+// Google Strategy
 passport.use(
   new GoogleStrategy(
     {
@@ -15,59 +18,86 @@ passport.use(
     },
     async (accessToken, refreshToken, profile, done) => {
       try {
-        console.log('Google OAuth Profile:', profile); // Log the profile
-        
-        // Extract email and domain
         const email = profile.emails[0].value;
         const domain = email.split('@')[1];
 
-        // Check if the domain is allowed
+        // Check domain
         if (!allowedDomains.includes(domain)) {
-          console.log('Invalid email domain:', email);
-          return done(null, false, { message: 'Invalid email domain. Only @bgecorp.com and @beglobalecommercecorp.com are allowed.' });
+          return done(null, false, { message: 'Invalid email domain' });
         }
 
-        // Check if this is the Super Admin
-        const isSuperAdmin = email === process.env.EMAIL_USER;
+        // Check if user exists
+        
+        let user = await User.findOne({ 
+          $or: [{ googleId: profile.id }, { email }] 
+        });
 
-        // Restrict Google OAuth login to Super Admin only
-        if (!isSuperAdmin) {
-          console.log('Google OAuth login restricted to Super Admin only.');
-          return done(null, false, { message: 'Google OAuth login is restricted to Super Admin only. Please sign up via the registration form.' });
-        }
-
-        // Check if user already exists
-        let user = await User.findOne({ googleId: profile.id });
-
-       // In the GoogleStrategy callback, ensure role is set:
         if (!user) {
+          // Create new user (only superadmin can register via Google)
+          if (email !== process.env.SUPERADMIN_EMAIL) {
+            return done(null, false, { 
+              message: 'Google login restricted. Please register normally.' 
+            });
+          }
+
           user = new User({
             googleId: profile.id,
-            email: email,
+            email,
             firstName: profile.name.givenName,
             lastName: profile.name.familyName,
             displayName: profile.displayName,
-            profilePicture: profile.photos?.[0]?.value, // Add profile picture
-            role: isSuperAdmin ? 'superadmin' : 'viewer', // Explicit role assignment
-            isApproved: isSuperAdmin
+            profilePicture: profile.photos?.[0]?.value,
+            role: 'superadmin',
+            isApproved: true
           });
           await user.save();
         } else {
-  // Update existing user if needed
-  user.role = isSuperAdmin ? 'superadmin' : user.role;
-  await user.save();
-}
-        
+          // Update existing user
+          if (!user.googleId) user.googleId = profile.id;
+          if (!user.profilePicture) user.profilePicture = profile.photos?.[0]?.value;
+          await user.save();
+        }
+
+        // Check if approved
+        if (!user.isApproved) {
+          return done(null, false, { message: 'Account not approved yet' });
+        }
 
         done(null, user);
       } catch (error) {
-        console.error('Google OAuth Error:', error);
         done(error, null);
       }
     }
   )
 );
 
+// Local Strategy for normal login
+passport.use(
+  new LocalStrategy({ usernameField: 'email' }, async (email, password, done) => {
+    try {
+      const user = await User.findOne({ email });
+      
+      if (!user) {
+        return done(null, false, { message: 'Invalid email or password' });
+      }
+      
+      if (!user.isApproved) {
+        return done(null, false, { message: 'Account not approved yet' });
+      }
+      
+      const isMatch = await bcrypt.compare(password, user.password);
+      if (!isMatch) {
+        return done(null, false, { message: 'Invalid email or password' });
+      }
+      
+      return done(null, user);
+    } catch (error) {
+      return done(error);
+    }
+  })
+);
+
+// Serialization
 passport.serializeUser((user, done) => {
   done(null, user.id);
 });
@@ -80,9 +110,3 @@ passport.deserializeUser(async (id, done) => {
     done(error, null);
   }
 });
-
-console.log('GOOGLE_CLIENT_ID:', process.env.GOOGLE_CLIENT_ID);
-console.log('GOOGLE_CLIENT_SECRET:', process.env.GOOGLE_CLIENT_SECRET);
-
-
-module.exports = passport;

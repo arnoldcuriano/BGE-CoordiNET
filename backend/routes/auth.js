@@ -1,132 +1,215 @@
 const express = require('express');
 const router = express.Router();
-const User = require('../models/User');
-const bcrypt = require('bcryptjs');
-const jwt = require('jsonwebtoken');
-const nodemailer = require('nodemailer');
 const passport = require('passport');
-const checkRole = require('../middleware/rbac');
+const User = require('../models/User');
+const nodemailer = require('nodemailer');
+const jwt = require('jsonwebtoken');
 
-// Google OAuth Login
+// Allowed domains for registration
+const allowedDomains = ['bgecorp.com', 'beglobalecommercecorp.com'];
+
+// Google OAuth
 router.get('/google', passport.authenticate('google', { scope: ['profile', 'email'] }));
 
-// Google OAuth Callback
 router.get(
   '/google/callback',
-  passport.authenticate('google', { failureRedirect: 'http://localhost:3000/login' }),
+  passport.authenticate('google', { 
+    failureRedirect: 'http://localhost:3000/login',
+    failureFlash: true 
+  }),
   (req, res) => {
-    // console.log('Google OAuth successful. Redirecting to dashboard.'); // Debugging
-    // console.log('Authenticated User:', req.user); // Log the authenticated user
-    // console.log('Session ID:', req.sessionID); // Log the session ID
-
-    // Redirect to the frontend with a query parameter indicating successful login
-    res.redirect(`http://localhost:3000/dashboard?loginSuccess=true`);
+    console.log('Successful Google auth, user:', req.user);
+    console.log('Session:', req.session);
+    res.redirect('http://localhost:3000/dashboard?loginSuccess=true');
   }
 );
 
-// Fetch authenticated user data
+// Get current user
 router.get('/user', (req, res) => {
-  console.log('Fetching user data. Session ID:', req.sessionID); // Debugging
-  console.log('Authenticated User:', req.user); // Debugging
+  console.log('Session in /auth/user:', req.session);
+  console.log('User in /auth/user:', req.user);
   if (!req.user) {
     return res.status(401).json({ message: 'Not authenticated' });
   }
   res.json({
+    id: req.user._id,
     email: req.user.email,
     firstName: req.user.firstName,
     lastName: req.user.lastName,
-    displayName: req.user.displayName,
-    profilePicture: req.user.profilePicture,
-    role: req.user.role
+    role: req.user.role,
+    profilePicture: req.user.profilePicture
   });
 });
 
-// Logout
-router.get('/logout', (req, res) => {
-  req.logout((err) => {
-    if (err) {
-      return res.status(500).json({ message: 'Error logging out' });
+// Get all approved members
+router.get('/members', async (req, res) => {
+  if (!req.user || req.user.role !== 'superadmin') {
+    return res.status(403).json({ message: 'Access denied. Insufficient permissions.' });
+  }
+  try {
+    const users = await User.find({ isApproved: true })
+      .select('firstName lastName email role createdAt')
+      .lean();
+    console.log('Members from DB:', users); // Debug
+    res.json(users);
+  } catch (error) {
+    console.error('Error fetching members:', error);
+    res.status(500).json({ message: 'Error fetching members', error: error.message });
+  }
+});
+
+// Update user details
+router.put('/update-user', async (req, res) => {
+  if (!req.user || req.user.role !== 'superadmin') {
+    return res.status(403).json({ message: 'Access denied. Insufficient permissions.' });
+  }
+  const { userId, firstName, lastName, role, password } = req.body;
+  try {
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
     }
-    res.clearCookie('connect.sid'); // Clear the session cookie
-    res.status(200).json({ message: 'Logged out successfully' });
+    if (firstName) user.firstName = firstName;
+    if (lastName) user.lastName = lastName;
+    if (role) user.role = role;
+    if (password) user.password = password; // Will be hashed by pre-save hook
+    await user.save();
+    res.json({ message: 'User updated successfully' });
+  } catch (error) {
+    console.error('Error updating user:', error);
+    res.status(500).json({ message: 'Update failed', error: error.message });
+  }
+});
+
+
+// Local Login
+router.post('/login', passport.authenticate('local'), (req, res) => {
+  const token = jwt.sign(
+    { id: req.user._id, role: req.user.role }, 
+    process.env.JWT_SECRET, 
+    { expiresIn: '1h' }
+  );
+  res.json({ 
+    user: {
+      id: req.user._id,
+      email: req.user.email,
+      firstName: req.user.firstName,
+      lastName: req.user.lastName,
+      role: req.user.role,
+      profilePicture: req.user.profilePicture
+    },
+    token 
   });
 });
 
-// Register (with domain restriction)
+// Register route
 router.post('/register', async (req, res) => {
-  const { firstName, lastName, email, password, department } = req.body;
+  const { firstName, lastName, email, password } = req.body;
 
-  // Check if email domain is allowed
-  const allowedDomains = ['bgecorp.com', 'beglobalecommercecorp.com'];
-  const domain = email.split('@')[1];
-  if (!allowedDomains.includes(domain)) {
-    return res.status(400).json({ message: 'Invalid email domain' });
+  try {
+    const existingUser = await User.findOne({ email });
+    if (existingUser) {
+      return res.status(400).json({ message: 'User already exists' });
+    }
+
+    const domain = email.split('@')[1];
+    if (!allowedDomains.includes(domain)) {
+      return res.status(403).json({ message: 'Registration is restricted to allowed domains' });
+    }
+
+    const user = new User({
+      firstName,
+      lastName,
+      email,
+      password,
+      role: 'viewer',
+      isApproved: false
+    });
+
+    await user.save();
+    await notifySuperadmin(email);
+    res.status(201).json({ message: 'User registered successfully, awaiting approval' });
+  } catch (error) {
+    console.error('Register error:', error);
+    res.status(500).json({ message: 'Server error during registration' });
   }
-
-  // Check if user already exists
-  const existingUser = await User.findOne({ email });
-  if (existingUser) {
-    return res.status(400).json({ message: 'User already exists' });
-  }
-
-  // Hash password
-  const hashedPassword = await bcrypt.hash(password, 10);
-
-  // Create new user
-  const user = new User({
-    firstName,
-    lastName,
-    email,
-    password: hashedPassword,
-    department,
-    role: 'viewer', // Default role for new users
-    isApproved: false, // New users are not approved by default
-  });
-
-  await user.save();
-  res.status(201).json({ message: 'User registered. Awaiting approval.' });
 });
 
-// Login
-router.post('/login', async (req, res) => {
-  const { email, password } = req.body;
-
-  // Check if user exists
-  const user = await User.findOne({ email });
-  if (!user) {
-    return res.status(400).json({ message: 'Invalid email or password' });
+// User Management Endpoints
+router.get('/pending-users', async (req, res) => {
+  if (!req.user || !['superadmin', 'admin'].includes(req.user.role)) {
+    return res.status(403).json({ message: 'Access denied. Insufficient permissions.' });
   }
-
-  // Check if user is approved
-  if (!user.isApproved) {
-    return res.status(400).json({ message: 'Account not approved yet' });
+  try {
+    const users = await User.find({ isApproved: false })
+      .select('firstName lastName email createdAt')
+      .lean();
+    console.log('Pending users from DB:', users);
+    res.json(users);
+  } catch (error) {
+    console.error('Error fetching pending users:', error);
+    res.status(500).json({ message: 'Error fetching pending users', error: error.message });
   }
-
-  // Check password
-  const isPasswordValid = await bcrypt.compare(password, user.password);
-  if (!isPasswordValid) {
-    return res.status(400).json({ message: 'Invalid email or password' });
-  }
-
-  // Generate JWT token with role
-  const token = jwt.sign({ id: user._id, role: user.role }, process.env.JWT_SECRET, { expiresIn: '1h' });
-  res.json({ token });
 });
 
-// Forgot Password
-router.post('/forgot-password', async (req, res) => {
-  const { email } = req.body;
-
-  // Check if user exists
-  const user = await User.findOne({ email });
-  if (!user) {
-    return res.status(400).json({ message: 'User not found' });
+router.post('/approve-user', async (req, res) => {
+  if (!req.user || req.user.role !== 'superadmin') {
+    return res.status(403).json({ message: 'Access denied. Insufficient permissions.' });
   }
+  const { userId, role } = req.body;
+  try {
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+    user.isApproved = true;
+    user.role = role;
+    await user.save();
+    await sendApprovalEmail(user.email);
+    res.json({ message: 'User approved successfully' });
+  } catch (error) {
+    console.error('Error approving user:', error);
+    res.status(500).json({ message: 'Approval failed', error: error.message });
+  }
+});
 
-  // Generate reset token
-  const resetToken = jwt.sign({ id: user._id }, process.env.JWT_SECRET, { expiresIn: '15m' });
+router.post('/reject-user', async (req, res) => {
+  if (!req.user || req.user.role !== 'superadmin') {
+    return res.status(403).json({ message: 'Access denied. Insufficient permissions.' });
+  }
+  const { userId } = req.body;
+  try {
+    const user = await User.findByIdAndDelete(userId);
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+    await sendRejectionEmail(user.email);
+    res.json({ message: 'User rejected and removed' });
+  } catch (error) {
+    console.error('Error rejecting user:', error);
+    res.status(500).json({ message: 'Rejection failed', error: error.message });
+  }
+});
 
-  // Send reset email
+router.delete('/delete-user', async (req, res) => {
+  if (!req.user || req.user.role !== 'superadmin') {
+    return res.status(403).json({ message: 'Access denied. Insufficient permissions.' });
+  }
+  const { userId } = req.body;
+  try {
+    const user = await User.findByIdAndDelete(userId);
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+    res.json({ message: 'User deleted successfully' });
+  } catch (error) {
+    console.error('Error deleting user:', error);
+    res.status(500).json({ message: 'Deletion failed', error: error.message });
+  }
+});
+
+// Helper functions
+async function notifySuperadmin(newUserEmail) {
   const transporter = nodemailer.createTransport({
     service: 'gmail',
     auth: {
@@ -135,66 +218,69 @@ router.post('/forgot-password', async (req, res) => {
     },
   });
 
-  const resetLink = `http://localhost:3000/reset-password/${resetToken}`;
   const mailOptions = {
     from: process.env.EMAIL_USER,
-    to: email,
-    subject: 'Password Reset',
-    text: `Click the link to reset your password: ${resetLink}`,
+    to: process.env.SUPERADMIN_EMAIL,
+    subject: 'New User Registration Requires Approval',
+    text: `A new user with email ${newUserEmail} has registered and is awaiting approval.`,
   };
 
-  transporter.sendMail(mailOptions, (error, info) => {
-    if (error) {
-      return res.status(500).json({ message: 'Error sending email' });
-    }
-    res.json({ message: 'Reset link sent to your email' });
+  await transporter.sendMail(mailOptions);
+}
+
+async function sendApprovalEmail(userEmail) {
+  const transporter = nodemailer.createTransport({
+    service: 'gmail',
+    auth: {
+      user: process.env.EMAIL_USER,
+      pass: process.env.EMAIL_PASS,
+    },
   });
-});
 
-// Reset Password
-router.post('/reset-password/:token', async (req, res) => {
-  const { token } = req.params;
-  const { password } = req.body;
+  const mailOptions = {
+    from: process.env.EMAIL_USER,
+    to: userEmail,
+    subject: 'Your Account Has Been Approved',
+    text: 'Your account has been approved by the administrator. You can now log in.',
+  };
 
-  try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    const user = await User.findById(decoded.id);
-    if (!user) {
-      return res.status(400).json({ message: 'Invalid token' });
+  await transporter.sendMail(mailOptions);
+}
+
+async function sendRejectionEmail(userEmail) {
+  const transporter = nodemailer.createTransport({
+    service: 'gmail',
+    auth: {
+      user: process.env.EMAIL_USER,
+      pass: process.env.EMAIL_PASS,
+    },
+  });
+
+  const mailOptions = {
+    from: process.env.EMAIL_USER,
+    to: userEmail,
+    subject: 'Your Registration Has Been Rejected',
+    text: 'Your registration request has been reviewed and rejected by the administrator.',
+  };
+
+  await transporter.sendMail(mailOptions);
+}
+
+router.get('/logout', (req, res) => {
+  req.logout((err) => {
+    if (err) {
+      console.error('Logout error:', err);
+      return res.status(500).json({ message: 'Error logging out' });
     }
-
-    // Hash new password
-    const hashedPassword = await bcrypt.hash(password, 10);
-    user.password = hashedPassword;
-    await user.save();
-
-    res.json({ message: 'Password reset successful' });
-  } catch (error) {
-    res.status(400).json({ message: 'Invalid or expired token' });
-  }
-});
-
-// Super Admin: Approve User and Assign Role
-router.post('/approve-user', checkRole(['superadmin']), async (req, res) => {
-  const { userId, role } = req.body;
-
-  // Check if user exists
-  const user = await User.findById(userId);
-  if (!user) {
-    return res.status(400).json({ message: 'User not found' });
-  }
-
-  // Approve user and assign role
-  user.isApproved = true;
-  user.role = role;
-  await user.save();
-
-  res.json({ message: 'User approved and role assigned successfully' });
-});
-
-// Admin Route (Protected by RBAC)
-router.get('/admin', checkRole(['admin', 'superadmin']), (req, res) => {
-  res.json({ message: 'Welcome, admin!' });
+    req.session.destroy((err) => {
+      if (err) {
+        console.error('Error destroying session:', err);
+        return res.status(500).json({ message: 'Error destroying session' });
+      }
+      res.clearCookie('connect.sid', { path: '/', sameSite: 'lax', httpOnly: true });
+      res.json({ message: 'Logged out successfully' });
+    });
+  });
 });
 
 module.exports = router;
