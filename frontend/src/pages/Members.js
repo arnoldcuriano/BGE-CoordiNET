@@ -13,15 +13,14 @@ import {
 } from '@mui/material';
 import { DataGrid, GridToolbar } from '@mui/x-data-grid';
 import DeleteIcon from '@mui/icons-material/Delete';
-import SaveIcon from '@mui/icons-material/Save'; // Add for save button
+import SaveIcon from '@mui/icons-material/Save';
 import axios from 'axios';
 import Navbar from '../components/Navbar';
 import Sidebar from '../components/Sidebar';
 
-const Members = ({ isDarkMode, toggleTheme, user, setUser }) => {
+const Members = ({ isDarkMode, toggleTheme, user, setUser, isCollapsed, toggleCollapse }) => {
   const [members, setMembers] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [isCollapsed, setIsCollapsed] = useState(false);
   const [logoutLoading, setLogoutLoading] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [editUser, setEditUser] = useState(null);
@@ -29,7 +28,6 @@ const Members = ({ isDarkMode, toggleTheme, user, setUser }) => {
   const navigate = useNavigate();
 
   const handleDrawerToggle = () => setMobileOpen(!mobileOpen);
-  const toggleCollapse = () => setIsCollapsed(!isCollapsed);
 
   useEffect(() => {
     if (!user || user.role !== 'superadmin') {
@@ -45,7 +43,7 @@ const Members = ({ isDarkMode, toggleTheme, user, setUser }) => {
         if (!Array.isArray(response.data)) {
           throw new Error('Invalid data format from /auth/members');
         }
-        const formattedMembers = response.data.map(u => ({
+        const formattedMembers = response.data.map((u) => ({
           _id: u._id || '',
           firstName: u.firstName || '',
           lastName: u.lastName || '',
@@ -53,6 +51,7 @@ const Members = ({ isDarkMode, toggleTheme, user, setUser }) => {
           role: u.role || 'viewer',
           selectedRole: u.role || 'viewer',
         }));
+        console.log('Formatted members:', formattedMembers);
         setMembers(formattedMembers);
       } catch (error) {
         console.error('Error fetching members:', error.response?.data || error.message);
@@ -70,16 +69,18 @@ const Members = ({ isDarkMode, toggleTheme, user, setUser }) => {
     try {
       const response = await axios.put(
         '/auth/update-user',
-        { 
+        {
           userId: editUser._id,
           firstName: editUser.firstName,
           lastName: editUser.lastName,
           role: editUser.selectedRole,
-          password: editUser.password || undefined
+          password: editUser.password || undefined,
         },
         { withCredentials: true }
       );
-      setMembers(prev => prev.map(u => u._id === editUser._id ? { ...u, ...editUser, role: editUser.selectedRole } : u));
+      setMembers((prev) =>
+        prev.map((u) => (u._id === editUser._id ? { ...u, ...editUser, role: editUser.selectedRole } : u))
+      );
       setEditUser(null);
       setSnackbar({ open: true, message: response.data.message, severity: 'success' });
     } catch (error) {
@@ -94,7 +95,9 @@ const Members = ({ isDarkMode, toggleTheme, user, setUser }) => {
         { userId, role: newRole },
         { withCredentials: true }
       );
-      setMembers(prev => prev.map(u => u._id === userId ? { ...u, role: newRole, selectedRole: newRole } : u));
+      setMembers((prev) =>
+        prev.map((u) => (u._id === userId ? { ...u, role: newRole, selectedRole: newRole } : u))
+      );
       setSnackbar({ open: true, message: response.data.message, severity: 'success' });
     } catch (error) {
       console.error('Error updating role:', error);
@@ -109,7 +112,7 @@ const Members = ({ isDarkMode, toggleTheme, user, setUser }) => {
         data: { userId },
         withCredentials: true,
       });
-      setMembers(prev => prev.filter(u => u._id !== userId));
+      setMembers((prev) => prev.filter((u) => u._id !== userId));
       setSnackbar({ open: true, message: response.data.message, severity: 'success' });
     } catch (error) {
       console.error('Error deleting user:', error);
@@ -132,31 +135,33 @@ const Members = ({ isDarkMode, toggleTheme, user, setUser }) => {
   };
 
   const columns = [
-    { 
-      field: 'name', 
-      headerName: 'Name', 
-      width: 200, 
-      valueGetter: (params) => {
+    {
+      field: 'name',
+      headerName: 'Name',
+      width: 200,
+      renderCell: (params) => {
         const row = params?.row;
-        console.log('Row data for name:', row); // Debug
-        if (!row) return '';
+        console.log('Row data for name:', row); // Debug each row
+        if (!row) return 'N/A';
         const fullName = `${row.firstName || ''} ${row.lastName || ''}`.trim();
         return fullName || 'Unnamed';
-      }
+      },
     },
     { field: 'email', headerName: 'Email', width: 250 },
     {
       field: 'role',
       headerName: 'Role',
       width: 200,
-      renderCell: (params) => (
+      renderCell: (params) =>
         params?.row ? (
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
             <select
               value={params.row.selectedRole || 'viewer'}
               onChange={(e) => {
                 const newRole = e.target.value;
-                setMembers(prev => prev.map(u => u._id === params.row._id ? { ...u, selectedRole: newRole } : u));
+                setMembers((prev) =>
+                  prev.map((u) => (u._id === params.row._id ? { ...u, selectedRole: newRole } : u))
+                );
               }}
               style={{ padding: '8px', borderRadius: '4px', width: '120px' }}
             >
@@ -174,14 +179,13 @@ const Members = ({ isDarkMode, toggleTheme, user, setUser }) => {
               Save
             </Button>
           </Box>
-        ) : null
-      ),
+        ) : null,
     },
     {
       field: 'actions',
       headerName: 'Actions',
       width: 200,
-      renderCell: (params) => (
+      renderCell: (params) =>
         params?.row ? (
           <Box sx={{ display: 'flex', gap: 1 }}>
             <Button
@@ -202,17 +206,34 @@ const Members = ({ isDarkMode, toggleTheme, user, setUser }) => {
               Delete
             </Button>
           </Box>
-        ) : null
-      ),
+        ) : null,
     },
   ];
 
-  if (loading || !user) return <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}><CircularProgress /></Box>;
+  if (loading) return <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}><CircularProgress /></Box>;
 
   return (
     <Box sx={{ display: 'flex' }}>
-      <Navbar isDarkMode={isDarkMode} toggleTheme={toggleTheme} handleDrawerToggle={handleDrawerToggle} user={user} handleLogout={handleLogout} logoutLoading={logoutLoading} isCollapsed={isCollapsed} />
-      <Sidebar mobileOpen={mobileOpen} handleDrawerToggle={handleDrawerToggle} isCollapsed={isCollapsed} toggleCollapse={toggleCollapse} user={user} handleLogout={handleLogout} logoutLoading={logoutLoading} />
+      <Navbar
+        isDarkMode={isDarkMode}
+        toggleTheme={toggleTheme}
+        handleDrawerToggle={handleDrawerToggle}
+        user={user}
+        handleLogout={handleLogout}
+        logoutLoading={logoutLoading}
+        isCollapsed={isCollapsed}
+        toggleCollapse={toggleCollapse}
+      />
+      <Sidebar
+        mobileOpen={mobileOpen}
+        handleDrawerToggle={handleDrawerToggle}
+        isCollapsed={isCollapsed}
+        toggleCollapse={toggleCollapse}
+        user={user}
+        handleLogout={handleLogout}
+        logoutLoading={logoutLoading}
+        isDarkMode={isDarkMode}
+      />
       <Box component="main" sx={{ flexGrow: 1, p: 3 }}>
         <Toolbar />
         <Typography variant="h4" gutterBottom sx={{ fontWeight: 'bold', color: isDarkMode ? '#fff' : '#1976d2' }}>Members</Typography>

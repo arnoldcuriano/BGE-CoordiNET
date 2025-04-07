@@ -1,6 +1,5 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Box, CircularProgress } from '@mui/material';
 import axios from 'axios';
 import Layout from '../components/Layout';
 import MainContent from '../components/MainContent';
@@ -8,6 +7,16 @@ import MainContent from '../components/MainContent';
 export default function DashboardLayoutBasic({ isDarkMode, toggleTheme, user, setUser }) {
   const navigate = useNavigate();
   const [logoutLoading, setLogoutLoading] = React.useState(false);
+  const [isCollapsed, setIsCollapsed] = useState(false);
+
+  const toggleCollapse = () => {
+    console.log('Before toggle - isCollapsed:', isCollapsed);
+    setIsCollapsed((prev) => {
+      const newState = !prev;
+      console.log('After toggle - isCollapsed:', newState);
+      return newState;
+    });
+  };
 
   const handleLogout = async () => {
     setLogoutLoading(true);
@@ -16,7 +25,7 @@ export default function DashboardLayoutBasic({ isDarkMode, toggleTheme, user, se
       console.log('Logout response:', response.data); // Debug
       localStorage.removeItem('isAuthenticated');
       setUser(null); // Reset user state
-      navigate('/login');
+      navigate('/login', { replace: true });
     } catch (error) {
       console.error('Logout error:', error.response?.data || error.message);
     } finally {
@@ -24,13 +33,7 @@ export default function DashboardLayoutBasic({ isDarkMode, toggleTheme, user, se
     }
   };
 
-  if (!user) {
-    return (
-      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
-        <CircularProgress />
-      </Box>
-    );
-  }
+  console.log('Dashboard rendering with user:', user);
 
   return (
     <Layout
@@ -39,6 +42,8 @@ export default function DashboardLayoutBasic({ isDarkMode, toggleTheme, user, se
       user={user}
       handleLogout={handleLogout}
       logoutLoading={logoutLoading}
+      isCollapsed={isCollapsed}
+      toggleCollapse={toggleCollapse}
     >
       <MainContent />
     </Layout>

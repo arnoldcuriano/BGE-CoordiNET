@@ -1,7 +1,15 @@
 import React, { useState } from 'react';
-import { Container, Typography, TextField, Button, Box, Alert } from '@mui/material';
-import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
+import {
+  Container,
+  Typography,
+  TextField,
+  Button,
+  Box,
+  Alert,
+  Paper,
+} from '@mui/material';
+import axios from 'axios';
 
 const Signup = () => {
   const [formData, setFormData] = useState({
@@ -48,16 +56,50 @@ const Signup = () => {
 
   console.log('Rendering Signup component');
 
-  try {
-    return (
+  return (
+    <Box
+      sx={{
+        minHeight: '100vh',
+        background: 'linear-gradient(135deg, #4285F4 0%, #34A853 100%)', // Gradient from primary to secondary
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        p: 2,
+      }}
+    >
       <Container maxWidth="sm">
-        <Box sx={{ mt: 4 }}>
-          <Typography variant="h4" gutterBottom>Sign Up</Typography>
-          <Typography variant="body2" color="textSecondary" gutterBottom>
+        <Paper
+          elevation={6}
+          sx={{
+            p: 4,
+            borderRadius: 2,
+            backgroundColor: '#ffffff', // --background-color
+            boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)', // --card-shadow
+          }}
+        >
+          <Typography
+            variant="h4"
+            gutterBottom
+            sx={{ color: '#4285F4', fontWeight: 'bold', textAlign: 'center' }} // --primary-color
+          >
+            Sign Up
+          </Typography>
+          <Typography
+            variant="body2"
+            sx={{ color: '#4a4a4a', mb: 3, textAlign: 'center' }} // --text-color
+          >
             Your registration will be reviewed by an administrator.
           </Typography>
-          {error && <Alert severity="error" sx={{ mt: 2 }}>{error}</Alert>}
-          {success && <Alert severity="success" sx={{ mt: 2 }}>{success}</Alert>}
+          {error && (
+            <Alert severity="error" sx={{ mb: 2 }}>
+              {error}
+            </Alert>
+          )}
+          {success && (
+            <Alert severity="success" sx={{ mb: 2 }}>
+              {success}
+            </Alert>
+          )}
           <form onSubmit={handleSubmit}>
             <TextField
               fullWidth
@@ -67,6 +109,13 @@ const Signup = () => {
               onChange={handleChange}
               margin="normal"
               required
+              variant="outlined"
+              sx={{
+                '& .MuiOutlinedInput-root': {
+                  '& fieldset': { borderColor: '#4285F4' }, // --primary-color
+                  '&:hover fieldset': { borderColor: '#34A853' }, // --secondary-color
+                },
+              }}
             />
             <TextField
               fullWidth
@@ -76,6 +125,13 @@ const Signup = () => {
               onChange={handleChange}
               margin="normal"
               required
+              variant="outlined"
+              sx={{
+                '& .MuiOutlinedInput-root': {
+                  '& fieldset': { borderColor: '#4285F4' },
+                  '&:hover fieldset': { borderColor: '#34A853' },
+                },
+              }}
             />
             <TextField
               fullWidth
@@ -86,6 +142,13 @@ const Signup = () => {
               onChange={handleChange}
               margin="normal"
               required
+              variant="outlined"
+              sx={{
+                '& .MuiOutlinedInput-root': {
+                  '& fieldset': { borderColor: '#4285F4' },
+                  '&:hover fieldset': { borderColor: '#34A853' },
+                },
+              }}
             />
             <TextField
               fullWidth
@@ -96,6 +159,13 @@ const Signup = () => {
               onChange={handleChange}
               margin="normal"
               required
+              variant="outlined"
+              sx={{
+                '& .MuiOutlinedInput-root': {
+                  '& fieldset': { borderColor: '#4285F4' },
+                  '&:hover fieldset': { borderColor: '#34A853' },
+                },
+              }}
             />
             <TextField
               fullWidth
@@ -106,26 +176,47 @@ const Signup = () => {
               onChange={handleChange}
               margin="normal"
               required
+              variant="outlined"
+              sx={{
+                '& .MuiOutlinedInput-root': {
+                  '& fieldset': { borderColor: '#4285F4' },
+                  '&:hover fieldset': { borderColor: '#34A853' },
+                },
+              }}
             />
-            <Button type="submit" variant="contained" color="primary" sx={{ mt: 2 }}>
+            <Button
+              type="submit"
+              variant="contained"
+              sx={{
+                mt: 3,
+                backgroundColor: '#4285F4', // --primary-color
+                '&:hover': { backgroundColor: '#34A853' }, // --secondary-color
+                color: '#ffffff',
+                fontWeight: 'bold',
+                borderRadius: 1,
+                py: 1.5,
+                width: '100%',
+              }}
+            >
               Sign Up
             </Button>
           </form>
           <Button
             variant="text"
-            color="primary"
             onClick={handleBackToLogin}
-            sx={{ mt: 2 }}
+            sx={{
+              mt: 2,
+              color: '#4285F4', // --primary-color
+              '&:hover': { color: '#34A853' }, // --secondary-color
+              width: '100%',
+            }}
           >
             Back to Login
           </Button>
-        </Box>
+        </Paper>
       </Container>
-    );
-  } catch (error) {
-    console.error('Signup render error:', error);
-    return <div>Error rendering signup page</div>;
-  }
+    </Box>
+  );
 };
 
 export default Signup;

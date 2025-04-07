@@ -16,10 +16,9 @@ import Navbar from '../components/Navbar';
 import Sidebar from '../components/Sidebar';
 import axios from 'axios';
 
-const SuperAdminDashboard = ({ isDarkMode, toggleTheme, user, setUser }) => {
-  const [pendingUsers, setPendingUsers] = useState([]); // Start as empty array
+const SuperAdminDashboard = ({ isDarkMode, toggleTheme, user, setUser, isCollapsed, toggleCollapse }) => {
+  const [pendingUsers, setPendingUsers] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [isCollapsed, setIsCollapsed] = useState(false);
   const [logoutLoading, setLogoutLoading] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [processingId, setProcessingId] = useState(null);
@@ -31,7 +30,6 @@ const SuperAdminDashboard = ({ isDarkMode, toggleTheme, user, setUser }) => {
   const navigate = useNavigate();
 
   const handleDrawerToggle = () => setMobileOpen(!mobileOpen);
-  const toggleCollapse = () => setIsCollapsed(!isCollapsed);
 
   useEffect(() => {
     if (!user || user.role !== 'superadmin') {
@@ -58,7 +56,7 @@ const SuperAdminDashboard = ({ isDarkMode, toggleTheme, user, setUser }) => {
           createdAt: user.createdAt || '',
           selectedRole: user.selectedRole || 'viewer',
         }));
-        console.log('Formatted users:', formattedUsers);
+        console.log('Formatted pending users:', formattedUsers);
         setPendingUsers(formattedUsers);
       } catch (error) {
         console.error('Error fetching pending users:', error.response?.data || error.message);
@@ -67,7 +65,7 @@ const SuperAdminDashboard = ({ isDarkMode, toggleTheme, user, setUser }) => {
           message: 'Failed to fetch pending users',
           severity: 'error',
         });
-        setPendingUsers([]); // Ensure it’s an array even on error
+        setPendingUsers([]);
       } finally {
         setLoading(false);
       }
@@ -81,7 +79,7 @@ const SuperAdminDashboard = ({ isDarkMode, toggleTheme, user, setUser }) => {
   }, [pendingUsers]);
 
   const handleApproveUser = async (userId, role) => {
-    console.log('Approving user:', userId, 'with role:', role); // Debug
+    console.log('Approving user:', userId, 'with role:', role);
     try {
       setProcessingId(userId);
       const response = await axios.post(
@@ -89,7 +87,7 @@ const SuperAdminDashboard = ({ isDarkMode, toggleTheme, user, setUser }) => {
         { userId, role },
         { withCredentials: true }
       );
-      console.log('Approve response:', response.data); // Debug
+      console.log('Approve response:', response.data);
       setPendingUsers((prev) => prev.filter((u) => u._id !== userId));
       setSnackbar({ open: true, message: response.data.message, severity: 'success' });
     } catch (error) {
@@ -101,7 +99,7 @@ const SuperAdminDashboard = ({ isDarkMode, toggleTheme, user, setUser }) => {
   };
 
   const handleDeclineUser = async (userId) => {
-    console.log('Declining user:', userId); // Debug
+    console.log('Declining user:', userId);
     try {
       setProcessingId(userId);
       const response = await axios.post(
@@ -109,7 +107,7 @@ const SuperAdminDashboard = ({ isDarkMode, toggleTheme, user, setUser }) => {
         { userId },
         { withCredentials: true }
       );
-      console.log('Decline response:', response.data); // Debug
+      console.log('Decline response:', response.data);
       setPendingUsers((prev) => prev.filter((u) => u._id !== userId));
       setSnackbar({ open: true, message: response.data.message, severity: 'success' });
     } catch (error) {
@@ -142,9 +140,12 @@ const SuperAdminDashboard = ({ isDarkMode, toggleTheme, user, setUser }) => {
       field: 'name',
       headerName: 'Name',
       width: 200,
-      valueGetter: (params) => {
-        if (!params || !params.row) return '';
-        return `${params.row.firstName || ''} ${params.row.lastName || ''}`.trim();
+      renderCell: (params) => {
+        const row = params?.row;
+        console.log('Pending user row data for name:', row);
+        if (!row) return 'N/A';
+        const fullName = `${row.firstName || ''} ${row.lastName || ''}`.trim();
+        return fullName || 'Unnamed';
       },
     },
     { field: 'email', headerName: 'Email', width: 250 },
@@ -200,7 +201,7 @@ const SuperAdminDashboard = ({ isDarkMode, toggleTheme, user, setUser }) => {
     },
   ];
 
-  if (loading || !user) {
+  if (loading) {
     return (
       <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
         <CircularProgress />
@@ -218,6 +219,7 @@ const SuperAdminDashboard = ({ isDarkMode, toggleTheme, user, setUser }) => {
         handleLogout={handleLogout}
         logoutLoading={logoutLoading}
         isCollapsed={isCollapsed}
+        toggleCollapse={toggleCollapse}
       />
       <Sidebar
         mobileOpen={mobileOpen}
@@ -227,6 +229,7 @@ const SuperAdminDashboard = ({ isDarkMode, toggleTheme, user, setUser }) => {
         user={user}
         handleLogout={handleLogout}
         logoutLoading={logoutLoading}
+        isDarkMode={isDarkMode}
       />
       <Box component="main" sx={{ flexGrow: 1, p: 3 }}>
         <Toolbar />
@@ -256,7 +259,7 @@ const SuperAdminDashboard = ({ isDarkMode, toggleTheme, user, setUser }) => {
                 '& .MuiDataGrid-cell': {
                   borderBottom: `1px solid ${isDarkMode ? '#616161' : '#e0e0e0'}`,
                   display: 'flex',
-                  alignItems: 'center', // Vertically center content
+                  alignItems: 'center',
                 },
                 '& .MuiDataGrid-columnHeaders': {
                   bgcolor: isDarkMode ? '#616161' : '#f5f5f5',

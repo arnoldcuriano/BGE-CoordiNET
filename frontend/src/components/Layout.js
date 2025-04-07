@@ -10,14 +10,21 @@ const Layout = ({ isDarkMode, toggleTheme, user, handleLogout, logoutLoading }) 
 
   // Toggle sidebar collapse/expand
   const toggleCollapse = () => {
-    setIsCollapsed(!isCollapsed);
-    console.log('Layout - isCollapsed:', isCollapsed); // Debugging
+    console.log('Before toggle - isCollapsed:', isCollapsed);
+    setIsCollapsed((prev) => {
+      const newState = !prev;
+      console.log('After toggle - isCollapsed:', newState);
+      return newState;
+    });
   };
 
   // Toggle mobile drawer
   const handleDrawerToggle = () => {
     setMobileOpen(!mobileOpen);
   };
+
+  // Log when Layout renders to confirm props
+  console.log('Layout rendering with props:', { isDarkMode, user, logoutLoading, isCollapsed });
 
   return (
     <Box sx={{ display: 'flex' }}>
@@ -28,18 +35,20 @@ const Layout = ({ isDarkMode, toggleTheme, user, handleLogout, logoutLoading }) 
         user={user}
         handleLogout={handleLogout}
         logoutLoading={logoutLoading}
-        isCollapsed={isCollapsed} // Pass isCollapsed to Navbar
+        isCollapsed={isCollapsed}
+        toggleCollapse={toggleCollapse}
       />
       <Sidebar
         mobileOpen={mobileOpen}
         handleDrawerToggle={handleDrawerToggle}
-        isCollapsed={isCollapsed} // Pass isCollapsed to Sidebar
+        isCollapsed={isCollapsed}
         toggleCollapse={toggleCollapse}
         user={user}
         handleLogout={handleLogout}
         logoutLoading={logoutLoading}
+        isDarkMode={isDarkMode}
       />
-      <MainContent isCollapsed={isCollapsed} /> {/* Pass isCollapsed to MainContent */}
+      <MainContent isCollapsed={isCollapsed} isDarkMode={isDarkMode} />
     </Box>
   );
 };
