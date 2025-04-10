@@ -58,7 +58,7 @@ const ForgotPassword = () => {
           <Typography
             variant="h4"
             gutterBottom
-            sx={{ color: '--primary--color', fontWeight: 'bold', textAlign: 'center' }} // --primary-color
+            sx={{ color: '#4285F4', fontWeight: 'bold', textAlign: 'center' }} // --primary-color
           >
             Forgot Password
           </Typography>
