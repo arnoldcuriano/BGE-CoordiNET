@@ -31,7 +31,7 @@ app.use(express.urlencoded({ extended: true }));
 // Session middleware with MongoStore
 app.use(
   session({
-    secret: process.env.SESSION_SECRET,
+    secret: process.env.SESSION_SECRET || 'your-secret-key',
     resave: false,
     saveUninitialized: false,
     store: MongoStore.create({
@@ -43,7 +43,8 @@ app.use(
       maxAge: 24 * 60 * 60 * 1000, // 1 day
       httpOnly: true,
       sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
-      domain: process.env.NODE_ENV === 'production' ? 'yourdomain.com' : 'localhost'
+      // Remove domain in development to avoid issues with localhost
+      domain: process.env.NODE_ENV === 'production' ? 'yourdomain.com' : undefined
     }
   })
 );
@@ -82,7 +83,6 @@ app.use((err, req, res, next) => {
   console.error('Server Error:', err);
   res.status(500).json({ error: 'Internal Server Error' });
 });
-
 
 // Start the server
 app.listen(PORT, () => {

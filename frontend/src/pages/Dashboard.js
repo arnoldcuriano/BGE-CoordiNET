@@ -1,51 +1,105 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import axios from 'axios';
-import Layout from '../components/Layout';
-import MainContent from '../components/MainContent';
+import { Box, Toolbar, Typography, useTheme } from '@mui/material';
+import Navbar from '../components/Navbar';
+import Sidebar from '../components/Sidebar';
 
-export default function DashboardLayoutBasic({ isDarkMode, toggleTheme, user, setUser }) {
-  const navigate = useNavigate();
-  const [logoutLoading, setLogoutLoading] = React.useState(false);
-  const [isCollapsed, setIsCollapsed] = useState(false);
+const Dashboard = ({ isDarkMode, toggleTheme, isCollapsed, toggleCollapse, handleLogout }) => {
+  const theme = useTheme();
+  const [mobileOpen, setMobileOpen] = useState(false);
 
-  const toggleCollapse = () => {
-    console.log('Before toggle - isCollapsed:', isCollapsed);
-    setIsCollapsed((prev) => {
-      const newState = !prev;
-      console.log('After toggle - isCollapsed:', newState);
-      return newState;
-    });
+  const handleDrawerToggle = () => {
+    setMobileOpen(!mobileOpen);
   };
 
-  const handleLogout = async () => {
-    setLogoutLoading(true);
-    try {
-      const response = await axios.get('http://localhost:5000/auth/logout', { withCredentials: true });
-      console.log('Logout response:', response.data); // Debug
-      localStorage.removeItem('isAuthenticated');
-      setUser(null); // Reset user state
-      navigate('/login', { replace: true });
-    } catch (error) {
-      console.error('Logout error:', error.response?.data || error.message);
-    } finally {
-      setLogoutLoading(false);
-    }
-  };
-
-  console.log('Dashboard rendering with user:', user);
+  const backgroundGradient = theme.custom?.gradients?.backgroundDefault || (
+    isDarkMode
+      ? 'linear-gradient(135deg, #1a1a2e 0%, #16213e 100%)'
+      : 'linear-gradient(135deg, #e0f7fa 0%, #b3e5fc 100%)'
+  );
 
   return (
-    <Layout
-      isDarkMode={isDarkMode}
-      toggleTheme={toggleTheme}
-      user={user}
-      handleLogout={handleLogout}
-      logoutLoading={logoutLoading}
-      isCollapsed={isCollapsed}
-      toggleCollapse={toggleCollapse}
+    <Box
+      sx={{
+        display: 'flex',
+        background: backgroundGradient,
+        minHeight: '100vh',
+      }}
     >
-      <MainContent />
-    </Layout>
+      <Navbar
+        isDarkMode={isDarkMode}
+        toggleTheme={toggleTheme}
+        handleDrawerToggle={handleDrawerToggle}
+        isCollapsed={isCollapsed}
+        toggleCollapse={toggleCollapse}
+        handleLogout={handleLogout}
+      />
+      <Sidebar
+        mobileOpen={mobileOpen}
+        handleDrawerToggle={handleDrawerToggle}
+        isCollapsed={isCollapsed}
+        isDarkMode={isDarkMode}
+        toggleCollapse={toggleCollapse}
+      />
+      <Box
+        component="main"
+        sx={{
+          flexGrow: 1,
+          p: 3,
+          backgroundColor: theme.palette.background.paper,
+          color: theme.palette.text.primary,
+        }}
+      >
+        <Toolbar />
+        <Typography variant="h4" gutterBottom sx={{ fontWeight: 'bold' }}>
+          Dashboard
+        </Typography>
+        <Box sx={{ display: 'flex', gap: 3, flexWrap: 'wrap' }}>
+          <Box
+            sx={{
+              p: 3,
+              borderRadius: 2,
+              background: theme.palette.background.listItem,
+              boxShadow: theme.custom?.shadow?.paper,
+              flex: '1 1 300px',
+            }}
+          >
+            <Typography variant="h6">Total Members</Typography>
+            <Typography variant="h4" sx={{ mt: 1, color: theme.palette.primary.main }}>
+              42
+            </Typography>
+          </Box>
+          <Box
+            sx={{
+              p: 3,
+              borderRadius: 2,
+              background: theme.palette.background.listItem,
+              boxShadow: theme.custom?.shadow?.paper,
+              flex: '1 1 300px',
+            }}
+          >
+            <Typography variant="h6">Pending Approvals</Typography>
+            <Typography variant="h4" sx={{ mt: 1, color: theme.palette.primary.main }}>
+              5
+            </Typography>
+          </Box>
+          <Box
+            sx={{
+              p: 3,
+              borderRadius: 2,
+              background: theme.palette.background.listItem,
+              boxShadow: theme.custom?.shadow?.paper,
+              flex: '1 1 300px',
+            }}
+          >
+            <Typography variant="h6">Recent Activity</Typography>
+            <Typography variant="body1" sx={{ mt: 1 }}>
+              Last login: 5 minutes ago
+            </Typography>
+          </Box>
+        </Box>
+      </Box>
+    </Box>
   );
-}
+};
+
+export default Dashboard;

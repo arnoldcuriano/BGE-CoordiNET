@@ -2,53 +2,49 @@ import React, { useState } from 'react';
 import { Box } from '@mui/material';
 import Navbar from './Navbar';
 import Sidebar from './Sidebar';
-import MainContent from './MainContent';
 
-const Layout = ({ isDarkMode, toggleTheme, user, handleLogout, logoutLoading }) => {
+const Layout = ({ children, isDarkMode, toggleTheme, user }) => {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [isCollapsed, setIsCollapsed] = useState(false);
 
-  // Toggle sidebar collapse/expand
-  const toggleCollapse = () => {
-    console.log('Before toggle - isCollapsed:', isCollapsed);
-    setIsCollapsed((prev) => {
-      const newState = !prev;
-      console.log('After toggle - isCollapsed:', newState);
-      return newState;
-    });
-  };
-
-  // Toggle mobile drawer
   const handleDrawerToggle = () => {
     setMobileOpen(!mobileOpen);
   };
 
-  // Log when Layout renders to confirm props
-  console.log('Layout rendering with props:', { isDarkMode, user, logoutLoading, isCollapsed });
+  const toggleCollapse = () => {
+    setIsCollapsed(!isCollapsed);
+  };
 
   return (
     <Box sx={{ display: 'flex' }}>
       <Navbar
-        isDarkMode={isDarkMode}
-        toggleTheme={toggleTheme}
         handleDrawerToggle={handleDrawerToggle}
         user={user}
-        handleLogout={handleLogout}
-        logoutLoading={logoutLoading}
-        isCollapsed={isCollapsed}
-        toggleCollapse={toggleCollapse}
+        isDarkMode={isDarkMode}
+        toggleTheme={toggleTheme}
       />
       <Sidebar
         mobileOpen={mobileOpen}
         handleDrawerToggle={handleDrawerToggle}
         isCollapsed={isCollapsed}
         toggleCollapse={toggleCollapse}
-        user={user}
-        handleLogout={handleLogout}
-        logoutLoading={logoutLoading}
         isDarkMode={isDarkMode}
+        user={user}
       />
-      <MainContent isCollapsed={isCollapsed} isDarkMode={isDarkMode} />
+      <Box
+        component="main"
+        sx={{
+          flexGrow: 1,
+          p: 3,
+          width: { sm: `calc(100% - ${isCollapsed ? 64 : 240}px)` },
+          background: isDarkMode
+            ? 'linear-gradient(135deg, #1a1a2e 0%, #16213e 100%)'
+            : 'linear-gradient(135deg, #e0f7fa 0%, #b3e5fc 100%)',
+          minHeight: '100vh',
+        }}
+      >
+        {children}
+      </Box>
     </Box>
   );
 };

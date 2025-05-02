@@ -1,46 +1,38 @@
 import React from 'react';
-import { Navigate, useSearchParams } from 'react-router-dom';
-import { CircularProgress, Box } from '@mui/material';
+import { Navigate } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
 
-const ProtectedRoute = ({ children, isPublic = false, user }) => {
-  const [searchParams] = useSearchParams();
-  const googleSuccess = searchParams.get('loginSuccess');
+const ProtectedRoute = ({ children, isPublic = false, pageKey = null }) => {
+  const { authState, loading } = useAuth();
 
-  // If user is undefined (initial load before auth check in App.js), show loading
-  if (user === undefined) {
-    return (
-      <Box
-        sx={{
-          display: 'flex',
-          justifyContent: 'center',
-          alignItems: 'center',
-          height: '100vh',
-        }}
-      >
-        <CircularProgress />
-      </Box>
-    );
+  if (loading) {
+    return <div>Loading...</div>;
   }
 
-  // Handle public routes (login, forgot-password)
+  console.log('ProtectedRoute: Viewer accessPermissions:', authState.accessPermissions, 'pageKey:', pageKey);
+
   if (isPublic) {
-    // If authenticated, redirect based on role after Google auth success
-    if (user) {
-      if (googleSuccess) {
-        return (
-          <Navigate
-            to={user.role === 'superadmin' ? '/superadmin-dashboard' : '/dashboard'}
-            replace
-          />
-        );
-      }
-      return <Navigate to="/dashboard" replace />;
-    }
-    return children; // Not authenticated, render public page (e.g., Login)
+    return authState.isAuthenticated ? <Navigate to="/dashboard" /> : children;
   }
 
-  // Handle protected routes
-  return user ? children : <Navigate to="/login" replace />;
+  if (!authState.isAuthenticated) {
+    return <Navigate to="/login" />;
+  }
+
+  if (authState.userRole === 'superadmin') {
+    return children;
+  }
+
+  // Check access permissions for non-superadmin users
+  if (pageKey && authState.userRole !== 'superadmin') {
+    const hasAccess = authState.accessPermissions?.[pageKey] === true;
+    if (!hasAccess) {
+      console.log(`Access denied for pageKey: ${pageKey}`);
+      return <Navigate to="/no-access" />;
+    }
+  }
+
+  return children;
 };
 
 export default ProtectedRoute;

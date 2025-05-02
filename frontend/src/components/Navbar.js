@@ -2,91 +2,115 @@ import React, { useState } from 'react';
 import {
   AppBar,
   Toolbar,
+  Typography,
   IconButton,
-  Badge,
-  Box,
-  Avatar,
   Menu,
   MenuItem,
-  CircularProgress,
-  Typography,
+  Box,
+  Avatar,
+  Switch,
   Tooltip,
-  Stack,
-  Divider,
-  useTheme,
+  TextField,
+  Badge,
+  List,
+  ListItem,
+  ListItemText,
 } from '@mui/material';
-import { styled } from '@mui/material/styles';
 import MenuIcon from '@mui/icons-material/Menu';
-import MenuOpenIcon from '@mui/icons-material/MenuOpen';
-import NotificationsIcon from '@mui/icons-material/Notifications';
-import Brightness4Icon from '@mui/icons-material/Brightness4';
-import Brightness7Icon from '@mui/icons-material/Brightness7';
+import { Link, useNavigate } from 'react-router-dom';
+import { LightMode, DarkMode, Notifications, Search, Apps, ChevronLeft, ChevronRight, Palette } from '@mui/icons-material';
+import { useAuth } from '../context/AuthContext';
 
-const Navbar = ({
-  isDarkMode,
-  toggleTheme,
-  handleDrawerToggle,
-  user,
-  handleLogout,
-  logoutLoading,
-  isCollapsed,
-  toggleCollapse = () => console.log('toggleCollapse not provided'),
-}) => {
-  const theme = useTheme();
+const Navbar = ({ handleDrawerToggle, user, isDarkMode, toggleTheme, isCollapsed, toggleCollapse }) => {
   const [anchorEl, setAnchorEl] = useState(null);
+  const [notifAnchorEl, setNotifAnchorEl] = useState(null);
+  const [appAnchorEl, setAppAnchorEl] = useState(null);
+  const [colorAnchorEl, setColorAnchorEl] = useState(null);
+  const [searchOpen, setSearchOpen] = useState(false);
+  const open = Boolean(anchorEl);
+  const notifOpen = Boolean(notifAnchorEl);
+  const appOpen = Boolean(appAnchorEl);
+  const colorOpen = Boolean(colorAnchorEl);
+  const navigate = useNavigate();
+  const { handleLogout } = useAuth();
 
-  const isDark = theme.palette.mode === 'dark' || isDarkMode;
-
-  const handleMenuOpen = (event) => {
+  const handleMenu = (event) => {
     setAnchorEl(event.currentTarget);
   };
 
-  const handleMenuClose = () => {
+  const handleClose = () => {
     setAnchorEl(null);
   };
 
-  const handleToggleCollapse = () => {
-    console.log('Collapse/Expand icon clicked, calling toggleCollapse');
-    if (typeof toggleCollapse === 'function') {
-      toggleCollapse();
-    } else {
-      console.error('toggleCollapse is not a function:', toggleCollapse);
+  const handleNotifMenu = (event) => {
+    setNotifAnchorEl(event.currentTarget);
+  };
+
+  const handleNotifClose = () => {
+    setNotifAnchorEl(null);
+  };
+
+  const handleAppMenu = (event) => {
+    setAppAnchorEl(event.currentTarget);
+  };
+
+  const handleAppClose = () => {
+    setAppAnchorEl(null);
+  };
+
+  const handleColorMenu = (event) => {
+    setColorAnchorEl(event.currentTarget);
+  };
+
+  const handleColorClose = () => {
+    setColorAnchorEl(null);
+  };
+
+  const handleLogoutClick = async () => {
+    handleClose();
+    const success = await handleLogout(navigate);
+    if (success) {
+      navigate('/login');
     }
   };
 
-  const displayName = user?.displayName || `${user?.firstName || ''} ${user?.lastName || ''}`.trim() || 'User';
+  const handleColorSelect = (color) => {
+    // Update theme primary color (requires theme update in App.js)
+    console.log(`Selected color: ${color}`);
+    handleColorClose();
+  };
 
-  console.log('Navbar rendering with props:', { isCollapsed, toggleCollapse });
+  const notifications = [
+    { id: 1, message: 'New member added to the team' },
+    { id: 2, message: 'Project deadline approaching' },
+  ];
 
-  const MaterialUISwitch = styled('div')(({ theme }) => ({
-    display: 'flex',
-    alignItems: 'center',
-    gap: '8px',
-    cursor: 'pointer',
-    padding: '6px 12px',
-    borderRadius: '20px',
-    backgroundColor: isDark ? '#424242' : '#e0e0e0',
-    transition: 'background 0.3s',
-    '&:hover': {
-      backgroundColor: isDark ? '#616161' : '#bdbdbd',
-    },
-  }));
+  const apps = [
+    { name: 'CoordiNET Dashboard', path: '/dashboard' },
+    { name: 'CoordiNET Analytics', path: '/analytics' },
+  ];
+
+  const colors = [
+    { name: 'Blue', value: '#1976d2' },
+    { name: 'Green', value: '#34A853' },
+    { name: 'Purple', value: '#9C27B0' },
+  ];
 
   return (
     <AppBar
       position="fixed"
       sx={{
-        width: '100%',
-        transition: (theme) =>
-          theme.transitions.create(['width', 'margin'], {
-            easing: theme.transitions.easing.sharp,
-            duration: theme.transitions.duration.enteringScreen,
-          }),
         zIndex: (theme) => theme.zIndex.drawer + 1,
-        backgroundColor: isDark ? '#121212' : '#ffffff',
-        color: isDark ? '#ffffff' : '#4a4a4a',
-        boxShadow: 'none',
-        borderBottom: `1px solid ${isDark ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.12)'}`,
+        background: isDarkMode
+          ? 'linear-gradient(90deg, rgba(26, 26, 46, 0.9) 0%, rgba(22, 33, 62, 0.9) 100%)'
+          : 'linear-gradient(90deg, rgba(224, 247, 250, 0.9) 0%, rgba(179, 229, 252, 0.9) 100%)',
+        backdropFilter: 'blur(10px)',
+        boxShadow: isDarkMode
+          ? '0 8px 32px rgba(0, 0, 0, 0.5)'
+          : '0 8px 32px rgba(0, 0, 0, 0.1)',
+        borderBottom: isDarkMode
+          ? '1px solid rgba(255, 255, 255, 0.1)'
+          : '1px solid rgba(0, 0, 0, 0.1)',
       }}
     >
       <Toolbar>
@@ -97,93 +121,324 @@ const Navbar = ({
           onClick={handleDrawerToggle}
           sx={{ mr: 2, display: { sm: 'none' } }}
         >
-          <MenuIcon sx={{ fontSize: 24 }} />
+          <MenuIcon />
         </IconButton>
         <IconButton
           color="inherit"
           aria-label={isCollapsed ? 'expand sidebar' : 'collapse sidebar'}
-          onClick={handleToggleCollapse}
-          sx={{ mr: 1, display: { xs: 'none', sm: 'block' }, zIndex: 10 }}
+          onClick={toggleCollapse}
+          sx={{ mr: 2, display: { xs: 'none', sm: 'inline-flex' } }}
         >
-          {isCollapsed ? <MenuIcon sx={{ fontSize: 24 }} /> : <MenuOpenIcon sx={{ fontSize: 24 }} />}
+          {isCollapsed ? <ChevronRight /> : <ChevronLeft />}
         </IconButton>
-        <Typography variant="h6" noWrap sx={{ flexGrow: 1, fontWeight: 'bold', color: isDark ? '#90caf9' : '#4285F4' }}>
-          CoordiNET
+        <Typography
+          variant="h6"
+          noWrap
+          component={Link}
+          to="/dashboard"
+          sx={{
+            flexGrow: 1,
+            fontFamily: '"Poppins", sans-serif',
+            fontWeight: 600,
+            color: isDarkMode ? '#ffffff' : '#1976d2',
+            textShadow: isDarkMode ? '0 0 8px rgba(255, 255, 255, 0.3)' : 'none',
+            textDecoration: 'none',
+          }}
+        >
+          BGE CoordiNET
         </Typography>
-        <Stack direction="row" spacing={2} alignItems="center">
-          <Tooltip title="Notifications">
-            <IconButton color="inherit">
-              <Badge badgeContent={4} color="error">
-                <NotificationsIcon sx={{ fontSize: 24 }} />
-              </Badge>
+        <Box sx={{ display: 'flex', alignItems: 'center' }}>
+          {searchOpen ? (
+            <TextField
+              size="small"
+              placeholder="Search..."
+              autoFocus
+              onBlur={() => setSearchOpen(false)}
+              sx={{
+                mr: 2,
+                width: '200px',
+                backgroundColor: isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.05)',
+                borderRadius: '4px',
+                '& .MuiInputBase-input': {
+                  color: isDarkMode ? '#ffffff' : '#1976d2',
+                  fontFamily: '"Poppins", sans-serif',
+                },
+              }}
+            />
+          ) : (
+            <IconButton
+              color="inherit"
+              onClick={() => setSearchOpen(true)}
+              sx={{ mr: 1 }}
+            >
+              <Search />
             </IconButton>
-          </Tooltip>
-
-          <Tooltip title={isDark ? 'Switch to Light Mode' : 'Switch to Dark Mode'}>
-            <MaterialUISwitch onClick={toggleTheme}>
-              {isDark ? (
-                <Brightness7Icon sx={{ fontSize: 24, color: '#ffb74d' }} />
-              ) : (
-                <Brightness4Icon sx={{ fontSize: 24, color: '#64b5f6' }} />
-              )}
-              <Typography variant="body2" sx={{ color: isDark ? '#ffffff' : '#4a4a4a' }}>
-                {isDark ? 'Light' : 'Dark'}
-              </Typography>
-            </MaterialUISwitch>
-          </Tooltip>
-
-          <Tooltip title={displayName}>
-            <IconButton onClick={handleMenuOpen} sx={{ p: 0 }}>
-              <Avatar
-                alt={displayName}
-                src={user?.profilePicture}
-                sx={{ width: 36, height: 36, border: `2px solid ${isDark ? '#90caf9' : '#4285F4'}` }}
-              />
-            </IconButton>
-          </Tooltip>
-
+          )}
+          <IconButton
+            color="inherit"
+            onClick={handleNotifMenu}
+            sx={{ mr: 1 }}
+          >
+            <Badge badgeContent={notifications.length} color="error">
+              <Notifications />
+            </Badge>
+          </IconButton>
           <Menu
-            anchorEl={anchorEl}
-            open={Boolean(anchorEl)}
-            onClose={handleMenuClose}
-            transformOrigin={{ horizontal: 'right', vertical: 'top' }}
-            anchorOrigin={{ horizontal: 'right', vertical: 'bottom' }}
+            anchorEl={notifAnchorEl}
+            open={notifOpen}
+            onClose={handleNotifClose}
             PaperProps={{
-              elevation: 6,
               sx: {
-                mt: 1,
-                borderRadius: 2,
-                minWidth: 200,
-                boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
-                backgroundColor: isDark ? '#424242' : '#ffffff',
-                color: isDark ? '#ffffff' : '#4a4a4a',
+                background: isDarkMode
+                  ? 'linear-gradient(135deg, rgba(26, 26, 46, 0.9) 0%, rgba(22, 33, 62, 0.9) 100%)'
+                  : 'linear-gradient(135deg, rgba(224, 247, 250, 0.9) 0%, rgba(179, 229, 252, 0.9) 100%)',
+                backdropFilter: 'blur(10px)',
+                boxShadow: isDarkMode
+                  ? '0 8px 32px rgba(0, 0, 0, 0.5)'
+                  : '0 8px 32px rgba(0, 0, 0, 0.1)',
+                border: isDarkMode
+                  ? '1px solid rgba(255, 255, 255, 0.1)'
+                  : '1px solid rgba(0, 0, 0, 0.1)',
+                maxHeight: '300px',
+                width: '250px',
               },
             }}
           >
-            <MenuItem disabled sx={{ opacity: 1, flexDirection: 'column', alignItems: 'flex-start' }}>
-              <Typography variant="body1" fontWeight="medium">
-                {displayName}
-              </Typography>
-              <Typography variant="caption" color={isDark ? 'rgba(255,255,255,0.7)' : 'text.secondary'}>
-                {user?.role || 'No role'}
-              </Typography>
-            </MenuItem>
-            <Divider sx={{ borderColor: isDark ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.12)' }} />
-            <MenuItem onClick={handleMenuClose}>
-              <Typography variant="body2">Profile</Typography>
-            </MenuItem>
-            <MenuItem onClick={handleLogout} disabled={logoutLoading}>
-              {logoutLoading ? (
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                  <CircularProgress size={20} color="inherit" />
-                  <Typography variant="body2">Logging out...</Typography>
-                </Box>
-              ) : (
-                <Typography variant="body2">Logout</Typography>
-              )}
-            </MenuItem>
+            {notifications.length > 0 ? (
+              notifications.map((notif) => (
+                <MenuItem
+                  key={notif.id}
+                  onClick={handleNotifClose}
+                  sx={{
+                    fontFamily: '"Poppins", sans-serif',
+                    fontSize: '0.85rem',
+                    color: isDarkMode ? '#ffffff' : '#1976d2',
+                    '&:hover': {
+                      backgroundColor: isDarkMode ? 'rgba(255, 255, 255, 0.2)' : 'rgba(0, 0, 0, 0.1)',
+                    },
+                  }}
+                >
+                  {notif.message}
+                </MenuItem>
+              ))
+            ) : (
+              <MenuItem
+                sx={{
+                  fontFamily: '"Poppins", sans-serif',
+                  fontSize: '0.85rem',
+                  color: isDarkMode ? '#ffffff' : '#1976d2',
+                }}
+              >
+                No notifications
+              </MenuItem>
+            )}
           </Menu>
-        </Stack>
+          <IconButton
+            color="inherit"
+            onClick={handleAppMenu}
+            sx={{ mr: 1 }}
+          >
+            <Apps />
+          </IconButton>
+          <Menu
+            anchorEl={appAnchorEl}
+            open={appOpen}
+            onClose={handleAppClose}
+            PaperProps={{
+              sx: {
+                background: isDarkMode
+                  ? 'linear-gradient(135deg, rgba(26, 26, 46, 0.9) 0%, rgba(22, 33, 62, 0.9) 100%)'
+                  : 'linear-gradient(135deg, rgba(224, 247, 250, 0.9) 0%, rgba(179, 229, 252, 0.9) 100%)',
+                backdropFilter: 'blur(10px)',
+                boxShadow: isDarkMode
+                  ? '0 8px 32px rgba(0, 0, 0, 0.5)'
+                  : '0 8px 32px rgba(0, 0, 0, 0.1)',
+                border: isDarkMode
+                  ? '1px solid rgba(255, 255, 255, 0.1)'
+                  : '1px solid rgba(0, 0, 0, 0.1)',
+              },
+            }}
+          >
+            {apps.map((app) => (
+              <MenuItem
+                key={app.name}
+                onClick={handleAppClose}
+                component={Link}
+                to={app.path}
+                sx={{
+                  fontFamily: '"Poppins", sans-serif',
+                  fontSize: '0.85rem',
+                  color: isDarkMode ? '#ffffff' : '#1976d2',
+                  '&:hover': {
+                    backgroundColor: isDarkMode ? 'rgba(255, 255, 255, 0.2)' : 'rgba(0, 0, 0, 0.1)',
+                  },
+                }}
+              >
+                {app.name}
+              </MenuItem>
+            ))}
+          </Menu>
+          <IconButton
+            color="inherit"
+            onClick={handleColorMenu}
+            sx={{ mr: 1 }}
+          >
+            <Palette />
+          </IconButton>
+          <Menu
+            anchorEl={colorAnchorEl}
+            open={colorOpen}
+            onClose={handleColorClose}
+            PaperProps={{
+              sx: {
+                background: isDarkMode
+                  ? 'linear-gradient(135deg, rgba(26, 26, 46, 0.9) 0%, rgba(22, 33, 62, 0.9) 100%)'
+                  : 'linear-gradient(135deg, rgba(224, 247, 250, 0.9) 0%, rgba(179, 229, 252, 0.9) 100%)',
+                backdropFilter: 'blur(10px)',
+                boxShadow: isDarkMode
+                  ? '0 8px 32px rgba(0, 0, 0, 0.5)'
+                  : '0 8px 32px rgba(0, 0, 0, 0.1)',
+                border: isDarkMode
+                  ? '1px solid rgba(255, 255, 255, 0.1)'
+                  : '1px solid rgba(0, 0, 0, 0.1)',
+              },
+            }}
+          >
+            {colors.map((color) => (
+              <MenuItem
+                key={color.name}
+                onClick={() => handleColorSelect(color.value)}
+                sx={{
+                  fontFamily: '"Poppins", sans-serif',
+                  fontSize: '0.85rem',
+                  color: isDarkMode ? '#ffffff' : '#1976d2',
+                  '&:hover': {
+                    backgroundColor: isDarkMode ? 'rgba(255, 255, 255, 0.2)' : 'rgba(0, 0, 0, 0.1)',
+                  },
+                }}
+              >
+                <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                  <Box
+                    sx={{
+                      width: 16,
+                      height: 16,
+                      backgroundColor: color.value,
+                      borderRadius: '50%',
+                      mr: 1,
+                    }}
+                  />
+                  {color.name}
+                </Box>
+              </MenuItem>
+            ))}
+          </Menu>
+          <Switch
+            checked={isDarkMode}
+            onChange={toggleTheme}
+            icon={<LightMode sx={{ color: '#ffb300' }} />}
+            checkedIcon={<DarkMode sx={{ color: '#1976d2' }} />}
+          />
+          {user && (
+            <>
+              <Tooltip
+                title={`${user.firstName} ${user.lastName}`}
+                arrow
+                placement="bottom"
+                sx={{
+                  fontFamily: '"Poppins", sans-serif',
+                  fontSize: '0.85rem',
+                }}
+              >
+                <IconButton
+                  onClick={handleMenu}
+                  sx={{
+                    p: 0,
+                    '&:hover': {
+                      backgroundColor: isDarkMode ? 'rgba(255, 255, 255, 0.2)' : 'rgba(0, 0, 0, 0.1)',
+                      boxShadow: isDarkMode ? '0 0 10px rgba(255, 255, 255, 0.3)' : 'none',
+                    },
+                    transition: 'all 0.3s ease',
+                  }}
+                >
+                  <Avatar
+                    alt={`${user.firstName} ${user.lastName}`}
+                    src={user.profilePicture}
+                    sx={{
+                      width: 36,
+                      height: 36,
+                      border: isDarkMode
+                        ? '2px solid rgba(255, 255, 255, 0.3)'
+                        : '2px solid rgba(0, 0, 0, 0.3)',
+                    }}
+                  />
+                </IconButton>
+              </Tooltip>
+              <Menu
+                anchorEl={anchorEl}
+                open={open}
+                onClose={handleClose}
+                PaperProps={{
+                  sx: {
+                    background: isDarkMode
+                      ? 'linear-gradient(135deg, rgba(26, 26, 46, 0.9) 0%, rgba(22, 33, 62, 0.9) 100%)'
+                      : 'linear-gradient(135deg, rgba(224, 247, 250, 0.9) 0%, rgba(179, 229, 252, 0.9) 100%)',
+                    backdropFilter: 'blur(10px)',
+                    boxShadow: isDarkMode
+                      ? '0 8px 32px rgba(0, 0, 0, 0.5)'
+                      : '0 8px 32px rgba(0, 0, 0, 0.1)',
+                    border: isDarkMode
+                      ? '1px solid rgba(255, 255, 255, 0.1)'
+                      : '1px solid rgba(0, 0, 0, 0.1)',
+                  },
+                }}
+              >
+                <MenuItem
+                  onClick={handleClose}
+                  component={Link}
+                  to="/profile-settings"
+                  sx={{
+                    fontFamily: '"Poppins", sans-serif',
+                    fontSize: '0.85rem',
+                    color: isDarkMode ? '#ffffff' : '#1976d2',
+                    '&:hover': {
+                      backgroundColor: isDarkMode ? 'rgba(255, 255, 255, 0.2)' : 'rgba(0, 0, 0, 0.1)',
+                    },
+                  }}
+                >
+                  Profile Settings
+                </MenuItem>
+                <MenuItem
+                  onClick={handleClose}
+                  component={Link}
+                  to="/account-settings"
+                  sx={{
+                    fontFamily: '"Poppins", sans-serif',
+                    fontSize: '0.85rem',
+                    color: isDarkMode ? '#ffffff' : '#1976d2',
+                    '&:hover': {
+                      backgroundColor: isDarkMode ? 'rgba(255, 255, 255, 0.2)' : 'rgba(0, 0, 0, 0.1)',
+                    },
+                  }}
+                >
+                  Account Settings
+                </MenuItem>
+                <MenuItem
+                  onClick={handleLogoutClick}
+                  sx={{
+                    fontFamily: '"Poppins", sans-serif',
+                    fontSize: '0.85rem',
+                    color: isDarkMode ? '#ffffff' : '#1976d2',
+                    '&:hover': {
+                      backgroundColor: isDarkMode ? 'rgba(255, 255, 255, 0.2)' : 'rgba(0, 0, 0, 0.1)',
+                    },
+                  }}
+                >
+                  Logout
+                </MenuItem>
+              </Menu>
+            </>
+          )}
+        </Box>
       </Toolbar>
     </AppBar>
   );

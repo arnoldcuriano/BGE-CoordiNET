@@ -2,7 +2,7 @@ const passport = require('passport');
 const GoogleStrategy = require('passport-google-oauth20').Strategy;
 const User = require('./models/User');
 const LocalStrategy = require('passport-local').Strategy;
-const bcrypt = require('bcryptjs');
+const bcrypt = require('bcrypt'); // Change from bcryptjs to bcrypt
 
 // Allowed email domains
 const allowedDomains = ['bgecorp.com', 'beglobalecommercecorp.com'];
@@ -27,7 +27,6 @@ passport.use(
         }
 
         // Check if user exists
-        
         let user = await User.findOne({ 
           $or: [{ googleId: profile.id }, { email }] 
         });
@@ -86,12 +85,14 @@ passport.use(
       }
       
       const isMatch = await bcrypt.compare(password, user.password);
+      console.log('Password comparison result for', email, ':', isMatch); // Add logging
       if (!isMatch) {
         return done(null, false, { message: 'Invalid email or password' });
       }
       
       return done(null, user);
     } catch (error) {
+      console.error('Local strategy error:', error);
       return done(error);
     }
   })
