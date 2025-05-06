@@ -19,7 +19,8 @@ import {
 import { Public, Settings, ConfirmationNumber, Visibility, VisibilityOff, DarkMode, LightMode } from '@mui/icons-material';
 import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
-import { useTheme } from '@mui/material/styles';
+import { useTheme as useMuiTheme } from '@mui/material/styles';
+import { useTheme } from '../hooks/useTheme';
 
 // Define animations
 const fadeIn = keyframes`
@@ -63,9 +64,9 @@ const glow = keyframes`
   100% { box-shadow: 0 0 5px rgba(52, 168, 83, 0.2); }
 `;
 
-const Login = ({ isDarkMode, toggleTheme }) => {
-  const theme = useTheme();
-  const effectiveIsDarkMode = isDarkMode !== undefined ? isDarkMode : false;
+const Login = () => {
+  const muiTheme = useMuiTheme();
+  const { isDarkMode, toggleTheme } = useTheme();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -80,7 +81,7 @@ const Login = ({ isDarkMode, toggleTheme }) => {
   console.log('Login.js: Rendering Login component');
   console.log('Login.js: authState:', authState);
   console.log('Login.js: searchParams:', searchParams.toString());
-  console.log('Login.js: isDarkMode:', effectiveIsDarkMode);
+  console.log('Login.js: isDarkMode from ThemeContext:', isDarkMode);
 
   useEffect(() => {
     console.log('Login.js: useEffect triggered, authState:', authState, 'searchParams:', searchParams.toString());
@@ -206,11 +207,11 @@ const Login = ({ isDarkMode, toggleTheme }) => {
 
   return (
     <Box
-      key={`login-${effectiveIsDarkMode}`} // Force re-render on theme change
+      key={`login-${isDarkMode}`}
       sx={{
         display: 'flex',
         minHeight: '100vh',
-        background: theme.palette.background.default,
+        background: muiTheme.palette.background.default,
         position: 'relative',
         overflow: 'hidden',
       }}
@@ -222,7 +223,7 @@ const Login = ({ isDarkMode, toggleTheme }) => {
           left: 0,
           width: '100%',
           height: '100%',
-          background: effectiveIsDarkMode
+          background: isDarkMode
             ? 'radial-gradient(circle at 30% 30%, rgba(66, 133, 244, 0.2) 0%, transparent 70%)'
             : 'radial-gradient(circle at 30% 30%, rgba(52, 168, 83, 0.2) 0%, transparent 70%)',
           zIndex: 0,
@@ -237,10 +238,10 @@ const Login = ({ isDarkMode, toggleTheme }) => {
         }}
       >
         <Switch
-          checked={effectiveIsDarkMode}
+          checked={isDarkMode}
           onChange={toggleTheme}
           icon={<LightMode sx={{ color: '#ffb300' }} />}
-          checkedIcon={<DarkMode sx={{ color: theme.palette.primary.main }} />}
+          checkedIcon={<DarkMode sx={{ color: muiTheme.palette.primary.main }} />}
         />
       </Box>
       <Box
@@ -250,14 +251,14 @@ const Login = ({ isDarkMode, toggleTheme }) => {
           flexDirection: 'column',
           justifyContent: 'center',
           alignItems: 'center',
-          color: theme.palette.text.primary,
+          color: muiTheme.palette.text.primary,
           padding: { xs: '30px 15px', sm: '40px 20px', md: '60px 40px' },
           textAlign: 'center',
           order: { xs: 2, sm: 1 },
           zIndex: 1,
           position: 'relative',
-          background: effectiveIsDarkMode ? 'transparent' : 'rgba(255, 255, 255, 0.1)',
-          backdropFilter: effectiveIsDarkMode ? 'none' : 'blur(15px)',
+          background: isDarkMode ? 'transparent' : 'rgba(255, 255, 255, 0.1)',
+          backdropFilter: isDarkMode ? 'none' : 'blur(15px)',
         }}
       >
         <Box
@@ -273,18 +274,18 @@ const Login = ({ isDarkMode, toggleTheme }) => {
             alt="BGE Logo"
             style={{
               width: '180px',
-              filter: effectiveIsDarkMode ? 'drop-shadow(0 0 10px rgba(255,255,255,0.3))' : 'drop-shadow(0 4px 8px rgba(0,0,0,0.2))',
+              filter: isDarkMode ? 'drop-shadow(0 0 10px rgba(255,255,255,0.3))' : 'drop-shadow(0 4px 8px rgba(0,0,0,0.2))',
             }}
           />
         </Box>
         <Box
           sx={{
             width: { xs: '90%', sm: '85%', md: '75%' },
-            background: effectiveIsDarkMode ? 'rgba(255, 255, 255, 0.05)' : 'rgba(255, 255, 255, 0.1)',
-            backdropFilter: effectiveIsDarkMode ? 'blur(10px)' : 'blur(15px)',
+            background: isDarkMode ? 'rgba(255, 255, 255, 0.05)' : 'rgba(255, 255, 255, 0.1)',
+            backdropFilter: isDarkMode ? 'blur(10px)' : 'blur(15px)',
             borderRadius: '16px',
-            border: effectiveIsDarkMode ? '1px solid rgba(255, 255, 255, 0.2)' : '1px solid rgba(0, 0, 0, 0.1)',
-            boxShadow: effectiveIsDarkMode ? '0 4px 12px rgba(0, 0, 0, 0.3)' : '0 4px 12px rgba(0, 0, 0, 0.1)',
+            border: isDarkMode ? '1px solid rgba(255, 255, 255, 0.2)' : '1px solid rgba(0, 0, 0, 0.1)',
+            boxShadow: isDarkMode ? '0 4px 12px rgba(0, 0, 0, 0.3)' : '0 4px 12px rgba(0, 0, 0, 0.1)',
             padding: { xs: '20px', sm: '30px' },
             mt: { xs: 16, sm: 12 },
           }}
@@ -295,8 +296,8 @@ const Login = ({ isDarkMode, toggleTheme }) => {
             gutterBottom
             sx={{
               fontFamily: "'Poppins', sans-serif",
-              color: theme.palette.primary.main,
-              textShadow: effectiveIsDarkMode ? '0 0 10px rgba(66, 133, 244, 0.5)' : 'none',
+              color: muiTheme.palette.primary.main,
+              textShadow: isDarkMode ? '0 0 10px rgba(66, 133, 244, 0.5)' : 'none',
             }}
           >
             Welcome Back!
@@ -304,19 +305,19 @@ const Login = ({ isDarkMode, toggleTheme }) => {
           <Box sx={{ mt: '30px' }}>
             {[
               {
-                icon: <Public sx={{ fontSize: 50, color: theme.palette.primary.main }} />,
+                icon: <Public sx={{ fontSize: 50, color: muiTheme.palette.primary.main }} />,
                 title: 'Visit our Main Website',
                 link: 'https://beglobalecommercecorp.com/',
                 text: 'Explore more about us and stay updated.',
               },
               {
-                icon: <Settings sx={{ fontSize: 50, color: theme.palette.primary.main }} />,
+                icon: <Settings sx={{ fontSize: 50, color: muiTheme.palette.primary.main }} />,
                 title: 'Login to GreatDay Account',
                 link: 'https://app.greatdayhr.com/',
                 text: 'Manage your GreatDay profile and tasks.',
               },
               {
-                icon: <ConfirmationNumber sx={{ fontSize: 50, color: theme.palette.primary.main }} />,
+                icon: <ConfirmationNumber sx={{ fontSize: 50, color: muiTheme.palette.primary.main }} />,
                 title: 'Need Support?',
                 link: 'mailto:arnoldcuriano84@gmail.com',
                 text: 'Contact our support team for assistance.',
@@ -327,17 +328,17 @@ const Login = ({ isDarkMode, toggleTheme }) => {
                 sx={{
                   display: 'flex',
                   alignItems: 'center',
-                  background: theme.palette.background.listItem,
+                  background: muiTheme.palette.background.listItem,
                   borderRadius: '12px',
                   padding: { xs: '16px', sm: '24px' },
                   marginBottom: '16px',
                   transition: 'all 0.3s ease',
-                  border: `1px solid ${theme.palette.border.main}`,
-                  boxShadow: theme.custom?.shadow?.listItem,
+                  border: `1px solid ${muiTheme.palette.border.main}`,
+                  boxShadow: muiTheme.custom?.shadow?.listItem,
                   '&:hover': {
                     transform: 'translateY(-5px)',
-                    boxShadow: theme.custom?.shadow?.paper,
-                    background: effectiveIsDarkMode ? 'rgba(255, 255, 255, 0.15)' : 'rgba(255, 255, 255, 0.3)',
+                    boxShadow: muiTheme.custom?.shadow?.paper,
+                    background: isDarkMode ? 'rgba(255, 255, 255, 0.15)' : 'rgba(255, 255, 255, 0.3)',
                     animation: `${glow} 1.5s infinite`,
                   },
                 }}
@@ -356,9 +357,9 @@ const Login = ({ isDarkMode, toggleTheme }) => {
                       target="_blank"
                       sx={{
                         textDecoration: 'none',
-                        color: theme.palette.primary.main,
+                        color: muiTheme.palette.primary.main,
                         transition: 'color 0.3s ease',
-                        '&:hover': { color: theme.palette.secondary.main },
+                        '&:hover': { color: muiTheme.palette.secondary.main },
                       }}
                     >
                       {item.title}
@@ -368,7 +369,7 @@ const Login = ({ isDarkMode, toggleTheme }) => {
                     variant="body2"
                     sx={{
                       fontFamily: "'Poppins', sans-serif",
-                      color: theme.palette.text.secondary,
+                      color: muiTheme.palette.text.secondary,
                     }}
                   >
                     {item.text}
@@ -397,10 +398,10 @@ const Login = ({ isDarkMode, toggleTheme }) => {
           sx={{
             p: { xs: 3, sm: 4 },
             borderRadius: 3,
-            background: effectiveIsDarkMode ? 'rgba(255, 255, 255, 0.05)' : 'rgba(255, 255, 255, 0.3)',
+            background: isDarkMode ? 'rgba(255, 255, 255, 0.05)' : 'rgba(255, 255, 255, 0.3)',
             backdropFilter: 'blur(10px)',
-            border: `1px solid ${theme.palette.border.main}`,
-            boxShadow: theme.custom?.shadow?.paper,
+            border: `1px solid ${muiTheme.palette.border.main}`,
+            boxShadow: muiTheme.custom?.shadow?.paper,
             width: { xs: '100%', sm: '90%', md: '75%' },
             maxWidth: '450px',
             animation: message
@@ -415,7 +416,7 @@ const Login = ({ isDarkMode, toggleTheme }) => {
             gutterBottom
             sx={{
               fontFamily: "'Poppins', sans-serif",
-              color: theme.palette.primary.main,
+              color: muiTheme.palette.primary.main,
             }}
           >
             Sign In
@@ -425,7 +426,7 @@ const Login = ({ isDarkMode, toggleTheme }) => {
             align="center"
             sx={{
               fontFamily: "'Poppins', sans-serif",
-              color: theme.palette.text.secondary,
+              color: muiTheme.palette.text.secondary,
               mb: 3,
             }}
           >
@@ -444,34 +445,34 @@ const Login = ({ isDarkMode, toggleTheme }) => {
               sx={{
                 '& .MuiOutlinedInput-root': {
                   borderRadius: '8px',
-                  background: theme.palette.background.listItem,
+                  background: muiTheme.palette.background.listItem,
                   transition: 'all 0.3s ease',
                   '& fieldset': {
-                    borderColor: theme.palette.border.main,
+                    borderColor: muiTheme.palette.border.main,
                   },
                   '&:hover fieldset': {
-                    borderColor: theme.palette.secondary.main,
+                    borderColor: muiTheme.palette.secondary.main,
                   },
                   '&:hover': {
                     transform: 'translateY(-2px)',
-                    boxShadow: theme.custom?.shadow?.listItem,
+                    boxShadow: muiTheme.custom?.shadow?.listItem,
                   },
                   '&.Mui-focused fieldset': {
-                    borderColor: theme.palette.secondary.main,
-                    boxShadow: `0 0 8px ${theme.palette.secondary.main}33`,
+                    borderColor: muiTheme.palette.secondary.main,
+                    boxShadow: `0 0 8px ${muiTheme.palette.secondary.main}33`,
                   },
                   '&.Mui-focused': {
                     transform: 'translateY(-2px)',
-                    boxShadow: theme.custom?.shadow?.listItem,
+                    boxShadow: muiTheme.custom?.shadow?.listItem,
                   },
                 },
                 '& .MuiInputLabel-root': {
                   fontFamily: "'Poppins', sans-serif",
-                  color: theme.palette.text.secondary,
+                  color: muiTheme.palette.text.secondary,
                 },
                 '& .MuiInputBase-input': {
                   fontFamily: "'Poppins', sans-serif",
-                  color: theme.palette.text.primary,
+                  color: muiTheme.palette.text.primary,
                 },
               }}
               disabled={loading || googleLoading}
@@ -491,7 +492,7 @@ const Login = ({ isDarkMode, toggleTheme }) => {
                     <IconButton
                       onClick={handleTogglePasswordVisibility}
                       edge="end"
-                      sx={{ color: theme.palette.text.secondary }}
+                      sx={{ color: muiTheme.palette.text.secondary }}
                     >
                       {showPassword ? <VisibilityOff /> : <Visibility />}
                     </IconButton>
@@ -501,34 +502,34 @@ const Login = ({ isDarkMode, toggleTheme }) => {
               sx={{
                 '& .MuiOutlinedInput-root': {
                   borderRadius: '8px',
-                  background: theme.palette.background.listItem,
+                  background: muiTheme.palette.background.listItem,
                   transition: 'all 0.3s ease',
                   '& fieldset': {
-                    borderColor: theme.palette.border.main,
+                    borderColor: muiTheme.palette.border.main,
                   },
                   '&:hover fieldset': {
-                    borderColor: theme.palette.secondary.main,
+                    borderColor: muiTheme.palette.secondary.main,
                   },
                   '&:hover': {
                     transform: 'translateY(-2px)',
-                    boxShadow: theme.custom?.shadow?.listItem,
+                    boxShadow: muiTheme.custom?.shadow?.listItem,
                   },
                   '&.Mui-focused fieldset': {
-                    borderColor: theme.palette.secondary.main,
-                    boxShadow: `0 0 8px ${theme.palette.secondary.main}33`,
+                    borderColor: muiTheme.palette.secondary.main,
+                    boxShadow: `0 0 8px ${muiTheme.palette.secondary.main}33`,
                   },
                   '&.Mui-focused': {
                     transform: 'translateY(-2px)',
-                    boxShadow: theme.custom?.shadow?.listItem,
+                    boxShadow: muiTheme.custom?.shadow?.listItem,
                   },
                 },
                 '& .MuiInputLabel-root': {
                   fontFamily: "'Poppins', sans-serif",
-                  color: theme.palette.text.secondary,
+                  color: muiTheme.palette.text.secondary,
                 },
                 '& .MuiInputBase-input': {
                   fontFamily: "'Poppins', sans-serif",
-                  color: theme.palette.text.primary,
+                  color: muiTheme.palette.text.primary,
                 },
               }}
               disabled={loading || googleLoading}
@@ -540,9 +541,9 @@ const Login = ({ isDarkMode, toggleTheme }) => {
                     checked={rememberMe}
                     onChange={(e) => setRememberMe(e.target.checked)}
                     sx={{
-                      color: theme.palette.text.secondary,
+                      color: muiTheme.palette.text.secondary,
                       '&.Mui-checked': {
-                        color: theme.palette.secondary.main,
+                        color: muiTheme.palette.secondary.main,
                       },
                     }}
                     disabled={loading || googleLoading}
@@ -552,7 +553,7 @@ const Login = ({ isDarkMode, toggleTheme }) => {
                 sx={{
                   '& .MuiTypography-root': {
                     fontFamily: "'Poppins', sans-serif",
-                    color: theme.palette.text.secondary,
+                    color: muiTheme.palette.text.secondary,
                   },
                 }}
               />
@@ -562,8 +563,8 @@ const Login = ({ isDarkMode, toggleTheme }) => {
                 onClick={handleForgotPasswordClick}
                 sx={{
                   fontFamily: "'Poppins', sans-serif",
-                  color: theme.palette.primary.main,
-                  '&:hover': { color: theme.palette.secondary.main },
+                  color: muiTheme.palette.primary.main,
+                  '&:hover': { color: muiTheme.palette.secondary.main },
                 }}
               >
                 Forgot Password?
@@ -604,7 +605,7 @@ const Login = ({ isDarkMode, toggleTheme }) => {
               )}
             </Button>
           </form>
-          <Divider sx={{ my: 2, color: theme.palette.text.secondary, fontFamily: "'Poppins', sans-serif" }}>
+          <Divider sx={{ my: 2, color: muiTheme.palette.text.secondary, fontFamily: "'Poppins', sans-serif" }}>
             OR
           </Divider>
           <Button
@@ -615,16 +616,16 @@ const Login = ({ isDarkMode, toggleTheme }) => {
               mt: 2,
               textTransform: 'none',
               fontSize: '16px',
-              color: theme.palette.primary.main,
-              borderColor: theme.palette.border.main,
-              background: theme.palette.background.listItem,
+              color: muiTheme.palette.primary.main,
+              borderColor: muiTheme.palette.border.main,
+              background: muiTheme.palette.background.listItem,
               borderRadius: '8px',
               py: 1.5,
               transition: 'all 0.3s',
               '&:hover': {
-                borderColor: theme.palette.secondary.main,
-                color: theme.palette.secondary.main,
-                background: effectiveIsDarkMode ? 'rgba(255, 255, 255, 0.15)' : 'rgba(255, 255, 255, 0.3)',
+                borderColor: muiTheme.palette.secondary.main,
+                color: muiTheme.palette.secondary.main,
+                background: isDarkMode ? 'rgba(255, 255, 255, 0.15)' : 'rgba(255, 255, 255, 0.3)',
               },
               fontFamily: "'Poppins', sans-serif",
             }}
@@ -644,7 +645,7 @@ const Login = ({ isDarkMode, toggleTheme }) => {
             align="center"
             sx={{
               mt: 3,
-              color: theme.palette.text.secondary,
+              color: muiTheme.palette.text.secondary,
               fontFamily: "'Poppins', sans-serif",
             }}
           >
@@ -655,12 +656,12 @@ const Login = ({ isDarkMode, toggleTheme }) => {
               onClick={handleSignupClick}
               sx={{
                 fontFamily: "'Poppins', sans-serif",
-                color: theme.palette.primary.main,
+                color: muiTheme.palette.primary.main,
                 fontWeight: 'bold',
                 position: 'relative',
                 textDecoration: 'none',
                 '&:hover': {
-                  color: theme.palette.secondary.main,
+                  color: muiTheme.palette.secondary.main,
                   '&:after': {
                     animation: `${underline} 0.3s forwards`,
                   },
@@ -672,7 +673,7 @@ const Login = ({ isDarkMode, toggleTheme }) => {
                   left: 0,
                   width: 0,
                   height: '2px',
-                  backgroundColor: theme.palette.secondary.main,
+                  backgroundColor: muiTheme.palette.secondary.main,
                   transition: 'width 0.3s',
                 },
                 '&:active': {

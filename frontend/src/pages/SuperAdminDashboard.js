@@ -4,7 +4,7 @@ import {
   Box,
   Toolbar,
   Typography,
-  useTheme,
+  useTheme as useMuiTheme,
   Button,
   CircularProgress,
   Snackbar,
@@ -27,9 +27,11 @@ import EditIcon from '@mui/icons-material/Edit';
 import Layout from '../components/Layout';
 import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
+import { useTheme } from '../hooks/useTheme'; // Custom hook for ThemeContext
 
-const SuperAdminDashboard = ({ isDarkMode, toggleTheme }) => {
-  const theme = useTheme();
+const SuperAdminDashboard = () => {
+  const muiTheme = useMuiTheme(); // For MUI theme properties if needed
+  const { isDarkMode } = useTheme(); // Access theme from ThemeContext
   const navigate = useNavigate();
   const { authState } = useAuth();
 
@@ -411,7 +413,7 @@ const SuperAdminDashboard = ({ isDarkMode, toggleTheme }) => {
   ];
 
   return (
-    <Layout isDarkMode={isDarkMode} toggleTheme={toggleTheme} user={user}>
+    <Layout user={user}>
       <Box
         sx={{
           minHeight: '100vh',
@@ -456,7 +458,7 @@ const SuperAdminDashboard = ({ isDarkMode, toggleTheme }) => {
             <Typography variant="h6" sx={{ fontFamily: '"Poppins", sans-serif', color: isDarkMode ? '#cccccc' : '#666666' }}>
               Total Members
             </Typography>
-            <Typography variant="h4" sx={{ mt: 1, color: theme.palette.primary.main, fontFamily: '"Poppins", sans-serif' }}>
+            <Typography variant="h4" sx={{ mt: 1, color: muiTheme.palette.primary.main, fontFamily: '"Poppins", sans-serif' }}>
               {approvedMembers.length}
             </Typography>
           </Box>
@@ -471,7 +473,7 @@ const SuperAdminDashboard = ({ isDarkMode, toggleTheme }) => {
                 : '0 8px 32px rgba(0, 0, 0, 0.1)',
               flex: '1 1 300px',
               border: isDarkMode
-                ? '1px solid rgba(255, 255, 257, 0.1)'
+                ? '1px solid rgba(255, 255, 255, 0.1)'
                 : '1px solid rgba(0, 0, 0, 0.1)',
               transition: 'transform 0.3s ease',
               '&:hover': {
@@ -482,7 +484,7 @@ const SuperAdminDashboard = ({ isDarkMode, toggleTheme }) => {
             <Typography variant="h6" sx={{ fontFamily: '"Poppins", sans-serif', color: isDarkMode ? '#cccccc' : '#666666' }}>
               Pending Approvals
             </Typography>
-            <Typography variant="h4" sx={{ mt: 1, color: theme.palette.primary.main, fontFamily: '"Poppins", sans-serif' }}>
+            <Typography variant="h4" sx={{ mt: 1, color: muiTheme.palette.primary.main, fontFamily: '"Poppins", sans-serif' }}>
               {pendingMembers.length}
             </Typography>
           </Box>
@@ -584,7 +586,7 @@ const SuperAdminDashboard = ({ isDarkMode, toggleTheme }) => {
                         onChange={handleSelectAllPending}
                         sx={{
                           color: isDarkMode ? '#ffffff' : '#1976d2',
-                          '&.Mui-checked': { color: theme.palette.secondary.main },
+                          '&.Mui-checked': { color: muiTheme.palette.secondary.main },
                         }}
                       />
                     </TableCell>
@@ -673,7 +675,7 @@ const SuperAdminDashboard = ({ isDarkMode, toggleTheme }) => {
                             onChange={() => handleSelectPending(member._id)}
                             sx={{
                               color: isDarkMode ? '#ffffff' : '#1976d2',
-                              '&.Mui-checked': { color: theme.palette.secondary.main },
+                              '&.Mui-checked': { color: muiTheme.palette.secondary.main },
                             }}
                           />
                         </TableCell>
@@ -720,7 +722,7 @@ const SuperAdminDashboard = ({ isDarkMode, toggleTheme }) => {
             />
           </>
         ) : (
-          <Typography sx={{ p: 2, color: theme.palette.text.secondary, fontFamily: '"Poppins", sans-serif' }}>
+          <Typography sx={{ p: 2, color: muiTheme.palette.text.secondary, fontFamily: '"Poppins", sans-serif' }}>
             No pending approvals
           </Typography>
         )}
@@ -756,7 +758,7 @@ const SuperAdminDashboard = ({ isDarkMode, toggleTheme }) => {
                           disabled={selectedApproved.length === 0}
                           sx={{
                             color: isDarkMode ? '#ffffff' : '#1976d2',
-                            '&.Mui-checked': { color: theme.palette.secondary.main },
+                            '&.Mui-checked': { color: muiTheme.palette.secondary.main },
                           }}
                         />
                       }
@@ -801,7 +803,7 @@ const SuperAdminDashboard = ({ isDarkMode, toggleTheme }) => {
                         onChange={handleSelectAllApproved}
                         sx={{
                           color: isDarkMode ? '#ffffff' : '#1976d2',
-                          '&.Mui-checked': { color: theme.palette.secondary.main },
+                          '&.Mui-checked': { color: muiTheme.palette.secondary.main },
                         }}
                       />
                     </TableCell>
@@ -890,7 +892,7 @@ const SuperAdminDashboard = ({ isDarkMode, toggleTheme }) => {
                             onChange={() => handleSelectApproved(member._id)}
                             sx={{
                               color: isDarkMode ? '#ffffff' : '#1976d2',
-                              '&.Mui-checked': { color: theme.palette.secondary.main },
+                              '&.Mui-checked': { color: muiTheme.palette.secondary.main },
                             }}
                           />
                         </TableCell>
@@ -930,7 +932,7 @@ const SuperAdminDashboard = ({ isDarkMode, toggleTheme }) => {
             />
           </>
         ) : (
-          <Typography sx={{ p: 2, color: theme.palette.text.secondary, fontFamily: '"Poppins", sans-serif' }}>
+          <Typography sx={{ p: 2, color: muiTheme.palette.text.secondary, fontFamily: '"Poppins", sans-serif' }}>
             No approved members
           </Typography>
         )}
@@ -983,7 +985,7 @@ const SuperAdminDashboard = ({ isDarkMode, toggleTheme }) => {
                       sx={{
                         color: isDarkMode ? '#ffffff' : '#1976d2',
                         '&.Mui-checked': {
-                          color: theme.palette.secondary.main,
+                          color: muiTheme.palette.secondary.main,
                         },
                       }}
                     />

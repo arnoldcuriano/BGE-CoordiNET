@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Drawer,
   List,
@@ -9,13 +9,13 @@ import {
   Divider,
   Box,
   Typography,
-  useTheme,
+  useTheme as useMuiTheme,
   IconButton,
   Menu,
   MenuItem,
   Avatar,
   CircularProgress,
-  Collapse, // Added missing import
+  Collapse,
 } from '@mui/material';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import DashboardIcon from '@mui/icons-material/Dashboard';
@@ -32,16 +32,17 @@ import DescriptionIcon from '@mui/icons-material/Description';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import ExpandLessIcon from '@mui/icons-material/ExpandLess';
 import { useAuth } from '../context/AuthContext';
+import { useTheme } from '../hooks/useTheme';
 
 const Sidebar = ({
   mobileOpen,
   handleDrawerToggle,
   isCollapsed,
-  isDarkMode,
   toggleCollapse,
-  user,
+  user: propUser,
 }) => {
-  const theme = useTheme();
+  const muiTheme = useMuiTheme();
+  const { isDarkMode } = useTheme();
   const navigate = useNavigate();
   const location = useLocation();
   const { handleLogout, authState } = useAuth();
@@ -50,10 +51,21 @@ const Sidebar = ({
   const [openSubmenu, setOpenSubmenu] = useState(false);
   const open = Boolean(anchorEl);
 
-  const effectiveIsDarkMode = isDarkMode !== undefined ? isDarkMode : false;
   const effectiveIsCollapsed = isCollapsed !== undefined ? isCollapsed : false;
   const accessPermissions = authState.accessPermissions || {};
   const isLoading = authState.loading;
+
+  // Fallback to authState.userRole if propUser is undefined
+  const user = propUser || { role: authState.userRole, firstName: authState.firstName, lastName: authState.lastName, profilePicture: authState.profilePicture };
+  const userRole = user.role;
+  const isSuperAdmin = userRole === 'superadmin';
+
+  // Debug logs
+  useEffect(() => {
+    console.log('Sidebar: authState:', authState);
+    console.log('Sidebar: User:', user);
+    console.log('Sidebar: Access Permissions:', accessPermissions);
+  }, [authState, user, accessPermissions]);
 
   const drawerWidth = effectiveIsCollapsed ? 64 : 240;
 
@@ -111,19 +123,19 @@ const Sidebar = ({
             variant="h6"
             sx={{
               fontWeight: 'bold',
-              color: effectiveIsDarkMode ? '#ffffff' : '#1976d2',
+              color: isDarkMode ? '#ffffff' : '#1976d2',
               fontFamily: '"Poppins", sans-serif',
-              textShadow: effectiveIsDarkMode ? '0 0 8px rgba(255, 255, 255, 0.3)' : 'none',
+              textShadow: isDarkMode ? '0 0 8px rgba(255, 255, 255, 0.3)' : 'none',
             }}
           >
             BGE CoordiNET
           </Typography>
         )}
       </Box>
-      <Divider sx={{ borderColor: effectiveIsDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)' }} />
+      <Divider sx={{ borderColor: isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)' }} />
       {isLoading ? (
         <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', p: 2 }}>
-          <CircularProgress size={24} sx={{ color: effectiveIsDarkMode ? '#ffffff' : '#1976d2' }} />
+          <CircularProgress size={24} sx={{ color: isDarkMode ? '#ffffff' : '#1976d2' }} />
         </Box>
       ) : (
         <>
@@ -133,7 +145,7 @@ const Sidebar = ({
               sx={{
                 pl: 2,
                 pt: 1,
-                color: effectiveIsDarkMode ? '#cccccc' : '#666666',
+                color: isDarkMode ? '#cccccc' : '#666666',
                 fontFamily: '"Poppins", sans-serif',
                 fontSize: '0.75rem',
               }}
@@ -144,13 +156,15 @@ const Sidebar = ({
           <List sx={{ pl: 2, flexGrow: 1, overflow: 'auto' }}>
             {menuItems.map((item) => {
               const isSelected = location.pathname === item.path;
-              if (
-                !user ||
-                !item.roles.includes(user?.role) ||
-                (user?.role !== 'superadmin' && !accessPermissions[item.permissionKey])
-              ) {
+              const hasRole = user && item.roles.includes(userRole);
+              const hasPermission = isSuperAdmin || (accessPermissions[item.permissionKey] === true);
+
+              console.log(`Sidebar: Menu Item "${item.text}": hasRole=${hasRole}, hasPermission=${hasPermission}, isSuperAdmin=${isSuperAdmin}`);
+
+              if (!hasRole || !hasPermission) {
                 return null;
               }
+
               return (
                 <React.Fragment key={item.text}>
                   <ListItem disablePadding>
@@ -164,15 +178,15 @@ const Sidebar = ({
                         justifyContent: effectiveIsCollapsed ? 'center' : 'initial',
                         px: 1.5,
                         backgroundColor: isSelected
-                          ? effectiveIsDarkMode
+                          ? isDarkMode
                             ? 'rgba(255, 255, 255, 0.2)'
                             : 'rgba(0, 0, 0, 0.1)'
                           : 'transparent',
                         '&:hover': {
-                          backgroundColor: effectiveIsDarkMode
+                          backgroundColor: isDarkMode
                             ? 'rgba(255, 255, 255, 0.3)'
                             : 'rgba(0, 0, 0, 0.15)',
-                          boxShadow: effectiveIsDarkMode
+                          boxShadow: isDarkMode
                             ? '0 0 10px rgba(255, 255, 255, 0.2)'
                             : '0 0 10px rgba(0, 0, 0, 0.1)',
                         },
@@ -184,7 +198,7 @@ const Sidebar = ({
                           minWidth: 0,
                           mr: effectiveIsCollapsed ? 0 : 2,
                           justifyContent: 'center',
-                          color: effectiveIsDarkMode ? '#ffffff' : '#1976d2',
+                          color: isDarkMode ? '#ffffff' : '#1976d2',
                         }}
                       >
                         {item.icon}
@@ -194,7 +208,7 @@ const Sidebar = ({
                           primary={item.text}
                           primaryTypographyProps={{
                             fontWeight: isSelected ? 'bold' : 'normal',
-                            color: effectiveIsDarkMode ? '#ffffff' : '#1976d2',
+                            color: isDarkMode ? '#ffffff' : '#1976d2',
                             fontFamily: '"Poppins", sans-serif',
                             fontSize: '0.85rem',
                           }}
@@ -217,15 +231,15 @@ const Sidebar = ({
                                 minHeight: 36,
                                 px: 1.5,
                                 backgroundColor: location.pathname === subItem.path
-                                  ? effectiveIsDarkMode
+                                  ? isDarkMode
                                     ? 'rgba(255, 255, 255, 0.2)'
                                     : 'rgba(0, 0, 0, 0.1)'
                                   : 'transparent',
                                 '&:hover': {
-                                  backgroundColor: effectiveIsDarkMode
+                                  backgroundColor: isDarkMode
                                     ? 'rgba(255, 255, 255, 0.3)'
                                     : 'rgba(0, 0, 0, 0.15)',
-                                  boxShadow: effectiveIsDarkMode
+                                  boxShadow: isDarkMode
                                     ? '0 0 10px rgba(255, 255, 255, 0.2)'
                                     : '0 0 10px rgba(0, 0, 0, 0.1)',
                                 },
@@ -236,7 +250,7 @@ const Sidebar = ({
                                 primary={subItem.text}
                                 primaryTypographyProps={{
                                   fontWeight: location.pathname === subItem.path ? 'bold' : 'normal',
-                                  color: effectiveIsDarkMode ? '#ffffff' : '#1976d2',
+                                  color: isDarkMode ? '#ffffff' : '#1976d2',
                                   fontFamily: '"Poppins", sans-serif',
                                   fontSize: '0.8rem',
                                 }}
@@ -252,13 +266,13 @@ const Sidebar = ({
             })}
             {!effectiveIsCollapsed && (
               <>
-                <Divider sx={{ borderColor: effectiveIsDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)' }} />
+                <Divider sx={{ borderColor: isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)' }} />
                 <Typography
                   variant="caption"
                   sx={{
                     pl: 2,
                     pt: 1,
-                    color: effectiveIsDarkMode ? '#cccccc' : '#666666',
+                    color: isDarkMode ? '#cccccc' : '#666666',
                     fontFamily: '"Poppins", sans-serif',
                     fontSize: '0.75rem',
                   }}
@@ -275,15 +289,15 @@ const Sidebar = ({
                           minHeight: 40,
                           px: 1.5,
                           backgroundColor: location.pathname === item.path
-                            ? effectiveIsDarkMode
+                            ? isDarkMode
                               ? 'rgba(255, 255, 255, 0.2)'
                               : 'rgba(0, 0, 0, 0.1)'
                             : 'transparent',
                           '&:hover': {
-                            backgroundColor: effectiveIsDarkMode
+                            backgroundColor: isDarkMode
                               ? 'rgba(255, 255, 255, 0.3)'
                               : 'rgba(0, 0, 0, 0.15)',
-                            boxShadow: effectiveIsDarkMode
+                            boxShadow: isDarkMode
                               ? '0 0 10px rgba(255, 255, 255, 0.2)'
                               : '0 0 10px rgba(0, 0, 0, 0.1)',
                           },
@@ -295,7 +309,7 @@ const Sidebar = ({
                             minWidth: 0,
                             mr: 2,
                             justifyContent: 'center',
-                            color: effectiveIsDarkMode ? '#ffffff' : '#1976d2',
+                            color: isDarkMode ? '#ffffff' : '#1976d2',
                           }}
                         >
                           {item.icon}
@@ -304,7 +318,7 @@ const Sidebar = ({
                           primary={item.text}
                           primaryTypographyProps={{
                             fontWeight: location.pathname === item.path ? 'bold' : 'normal',
-                            color: effectiveIsDarkMode ? '#ffffff' : '#1976d2',
+                            color: isDarkMode ? '#ffffff' : '#1976d2',
                             fontFamily: '"Poppins", sans-serif',
                             fontSize: '0.85rem',
                           }}
@@ -318,7 +332,7 @@ const Sidebar = ({
           </List>
         </>
       )}
-      <Divider sx={{ borderColor: effectiveIsDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)' }} />
+      <Divider sx={{ borderColor: isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)' }} />
       <Box sx={{ p: 1.5, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         {!effectiveIsCollapsed && user && (
           <Box sx={{ display: 'flex', alignItems: 'center', maxWidth: '80%' }}>
@@ -329,7 +343,7 @@ const Sidebar = ({
                 width: 36,
                 height: 36,
                 mr: 1,
-                border: effectiveIsDarkMode
+                border: isDarkMode
                   ? '2px solid rgba(255, 255, 255, 0.3)'
                   : '2px solid rgba(0, 0, 0, 0.3)',
               }}
@@ -339,7 +353,7 @@ const Sidebar = ({
                 variant="body2"
                 sx={{
                   fontWeight: 'medium',
-                  color: effectiveIsDarkMode ? '#ffffff' : '#1976d2',
+                  color: isDarkMode ? '#ffffff' : '#1976d2',
                   fontFamily: '"Poppins", sans-serif',
                   whiteSpace: 'nowrap',
                   overflow: 'hidden',
@@ -351,7 +365,7 @@ const Sidebar = ({
               <Typography
                 variant="caption"
                 sx={{
-                  color: effectiveIsDarkMode ? '#cccccc' : '#666666',
+                  color: isDarkMode ? '#cccccc' : '#666666',
                   fontFamily: '"Poppins", sans-serif',
                 }}
               >
@@ -363,7 +377,7 @@ const Sidebar = ({
         <IconButton
           onClick={handleMenu}
           sx={{
-            color: effectiveIsDarkMode ? '#ffffff' : '#1976d2',
+            color: isDarkMode ? '#ffffff' : '#1976d2',
           }}
         >
           <MoreVertIcon />
@@ -374,14 +388,14 @@ const Sidebar = ({
           onClose={handleClose}
           PaperProps={{
             sx: {
-              background: effectiveIsDarkMode
+              background: isDarkMode
                 ? 'linear-gradient(135deg, rgba(26, 26, 46, 0.9) 0%, rgba(22, 33, 62, 0.9) 100%)'
                 : 'linear-gradient(135deg, rgba(224, 247, 250, 0.9) 0%, rgba(179, 229, 252, 0.9) 100%)',
               backdropFilter: 'blur(10px)',
-              boxShadow: effectiveIsDarkMode
+              boxShadow: isDarkMode
                 ? '0 8px 32px rgba(0, 0, 0, 0.5)'
                 : '0 8px 32px rgba(0, 0, 0, 0.1)',
-              border: effectiveIsDarkMode
+              border: isDarkMode
                 ? '1px solid rgba(255, 255, 255, 0.1)'
                 : '1px solid rgba(0, 0, 0, 0.1)',
             },
@@ -394,9 +408,9 @@ const Sidebar = ({
             sx={{
               fontFamily: '"Poppins", sans-serif',
               fontSize: '0.85rem',
-              color: effectiveIsDarkMode ? '#ffffff' : '#1976d2',
+              color: isDarkMode ? '#ffffff' : '#1976d2',
               '&:hover': {
-                backgroundColor: effectiveIsDarkMode ? 'rgba(255, 255, 255, 0.2)' : 'rgba(0, 0, 0, 0.1)',
+                backgroundColor: isDarkMode ? 'rgba(255, 255, 255, 0.2)' : 'rgba(0, 0, 0, 0.1)',
               },
             }}
           >
@@ -409,9 +423,9 @@ const Sidebar = ({
             sx={{
               fontFamily: '"Poppins", sans-serif',
               fontSize: '0.85rem',
-              color: effectiveIsDarkMode ? '#ffffff' : '#1976d2',
+              color: isDarkMode ? '#ffffff' : '#1976d2',
               '&:hover': {
-                backgroundColor: effectiveIsDarkMode ? 'rgba(255, 255, 255, 0.2)' : 'rgba(0, 0, 0, 0.1)',
+                backgroundColor: isDarkMode ? 'rgba(255, 255, 255, 0.2)' : 'rgba(0, 0, 0, 0.1)',
               },
             }}
           >
@@ -422,9 +436,9 @@ const Sidebar = ({
             sx={{
               fontFamily: '"Poppins", sans-serif',
               fontSize: '0.85rem',
-              color: effectiveIsDarkMode ? '#ffffff' : '#1976d2',
+              color: isDarkMode ? '#ffffff' : '#1976d2',
               '&:hover': {
-                backgroundColor: effectiveIsDarkMode ? 'rgba(255, 255, 255, 0.2)' : 'rgba(0, 0, 0, 0.1)',
+                backgroundColor: isDarkMode ? 'rgba(255, 255, 255, 0.2)' : 'rgba(0, 0, 0, 0.1)',
               },
             }}
           >
@@ -449,12 +463,12 @@ const Sidebar = ({
           '& .MuiDrawer-paper': {
             boxSizing: 'border-box',
             width: drawerWidth,
-            background: effectiveIsDarkMode
+            background: isDarkMode
               ? 'linear-gradient(180deg, #1a1a2e 0%, #16213e 100%)'
               : 'linear-gradient(180deg, #e0f7fa 0%, #b3e5fc 100%)',
             backdropFilter: 'blur(10px)',
             borderRight: 'none',
-            boxShadow: effectiveIsDarkMode
+            boxShadow: isDarkMode
               ? '0 8px 32px rgba(0, 0, 0, 0.5)'
               : '0 8px 32px rgba(0, 0, 0, 0.1)',
           },
@@ -472,12 +486,12 @@ const Sidebar = ({
           '& .MuiDrawer-paper': {
             width: drawerWidth,
             boxSizing: 'border-box',
-            background: effectiveIsDarkMode
+            background: isDarkMode
               ? 'linear-gradient(180deg, #1a1a2e 0%, #16213e 100%)'
               : 'linear-gradient(180deg, #e0f7fa 0%, #b3e5fc 100%)',
             backdropFilter: 'blur(10px)',
             borderRight: 'none',
-            boxShadow: effectiveIsDarkMode
+            boxShadow: isDarkMode
               ? '0 8px 32px rgba(0, 0, 0, 0.5)'
               : '0 8px 32px rgba(0, 0, 0, 0.1)',
             transition: (theme) =>

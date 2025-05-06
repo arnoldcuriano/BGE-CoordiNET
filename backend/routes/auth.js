@@ -40,11 +40,21 @@ router.get(
 
 // Get current user
 router.get('/user', (req, res) => {
-  console.log('Session in /auth/user:', req.session);
-  console.log('User in /auth/user:', req.user);
   if (!req.user) {
     return res.status(401).json({ message: 'Not authenticated' });
   }
+  const permissions = req.user.role === 'superadmin'
+    ? {
+        dashboard: true,
+        members: true,
+        partners: true,
+        hrManagement: true,
+        projects: true,
+        itInventory: true,
+        quickTools: true,
+        superadminDashboard: true,
+      }
+    : req.user.accessPermissions || {};
   res.json({
     id: req.user._id,
     email: req.user.email,
@@ -53,7 +63,7 @@ router.get('/user', (req, res) => {
     role: req.user.role,
     profilePicture: req.user.profilePicture,
     isApproved: req.user.isApproved,
-    accessPermissions: req.user.accessPermissions, // Include access permissions
+    accessPermissions: permissions,
   });
 });
 

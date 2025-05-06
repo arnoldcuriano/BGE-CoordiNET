@@ -6,12 +6,13 @@ import {
   Button,
   Box,
   Paper,
-  useTheme,
+  useTheme as useMuiTheme,
   keyframes,
   CircularProgress,
 } from '@mui/material';
 import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
+import { useTheme } from '../hooks/useTheme'; // Custom hook for ThemeContext
 
 // Define animations
 const fadeIn = keyframes`
@@ -34,8 +35,9 @@ const shake = keyframes`
   100% { transform: translateX(0); }
 `;
 
-const ForgotPassword = ({ isDarkMode }) => {
+const ForgotPassword = () => {
   const theme = useTheme();
+  const muiTheme = useMuiTheme();
   const [email, setEmail] = useState('');
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
@@ -77,7 +79,7 @@ const ForgotPassword = ({ isDarkMode }) => {
         display: 'flex',
         flexDirection: 'column',
         minHeight: '100vh',
-        background: isDarkMode
+        background: theme.isDarkMode
           ? 'linear-gradient(135deg, #1a1a2e 0%, #16213e 100%)'
           : 'linear-gradient(135deg, #e0f7fa 0%, #b3e5fc 100%)',
         justifyContent: 'center',
@@ -90,10 +92,10 @@ const ForgotPassword = ({ isDarkMode }) => {
         sx={{
           p: { xs: 3, sm: 4 },
           borderRadius: 3,
-          background: theme.palette.background?.paper || 'rgba(255, 255, 255, 0.9)',
+          background: muiTheme.palette.background?.paper || 'rgba(255, 255, 255, 0.9)',
           backdropFilter: 'blur(10px)',
-          border: theme.palette.border?.main || 'rgba(0, 0, 0, 0.1)',
-          boxShadow: theme.custom?.shadow?.paper || (isDarkMode ? '0 8px 32px rgba(0, 0, 0, 0.5)' : '0 8px 32px rgba(0, 0, 0, 0.1)'),
+          border: muiTheme.palette.border?.main || 'rgba(0, 0, 0, 0.1)',
+          boxShadow: muiTheme.custom?.shadow?.paper || (theme.isDarkMode ? '0 8px 32px rgba(0, 0, 0, 0.5)' : '0 8px 32px rgba(0, 0, 0, 0.1)'),
           width: { xs: '100%', sm: '90%', md: '75%' },
           maxWidth: '450px',
           animation: error ? `${shake} 0.5s ease` : `${fadeIn} 0.8s ease-out`,
@@ -106,7 +108,7 @@ const ForgotPassword = ({ isDarkMode }) => {
           gutterBottom
           sx={{
             fontFamily: "'Poppins', sans-serif",
-            color: theme.palette.primary?.main || '#4285F4',
+            color: muiTheme.palette.primary?.main || '#4285F4',
           }}
         >
           Forgot Password
@@ -116,7 +118,7 @@ const ForgotPassword = ({ isDarkMode }) => {
           align="center"
           sx={{
             fontFamily: "'Poppins', sans-serif",
-            color: theme.palette.text?.secondary || '#666',
+            color: muiTheme.palette.text?.secondary || '#666',
             mb: 3,
           }}
         >
@@ -135,34 +137,34 @@ const ForgotPassword = ({ isDarkMode }) => {
             sx={{
               '& .MuiOutlinedInput-root': {
                 borderRadius: '8px',
-                background: theme.palette.background?.listItem || 'rgba(255, 255, 255, 0.5)',
+                background: muiTheme.palette.background?.listItem || 'rgba(255, 255, 255, 0.5)',
                 transition: 'all 0.3s ease',
                 '& fieldset': {
-                  borderColor: theme.palette.border?.main || 'rgba(0, 0, 0, 0.1)',
+                  borderColor: muiTheme.palette.border?.main || 'rgba(0, 0, 0, 0.1)',
                 },
                 '&:hover fieldset': {
-                  borderColor: theme.palette.secondary?.main || '#34A853',
+                  borderColor: muiTheme.palette.secondary?.main || '#34A853',
                 },
                 '&:hover': {
                   transform: 'translateY(-2px)',
-                  boxShadow: theme.custom?.shadow?.listItem || (isDarkMode ? '0 4px 15px rgba(0, 0, 0, 0.3)' : '0 4px 15px rgba(0, 0, 0, 0.1)'),
+                  boxShadow: muiTheme.custom?.shadow?.listItem || (theme.isDarkMode ? '0 4px 15px rgba(0, 0, 0, 0.3)' : '0 4px 15px rgba(0, 0, 0, 0.1)'),
                 },
                 '&.Mui-focused fieldset': {
-                  borderColor: theme.palette.secondary?.main || '#34A853',
-                  boxShadow: `0 0 8px ${theme.palette.secondary?.main || '#34A853'}33`,
+                  borderColor: muiTheme.palette.secondary?.main || '#34A853',
+                  boxShadow: `0 0 8px ${muiTheme.palette.secondary?.main || '#34A853'}33`,
                 },
                 '&.Mui-focused': {
                   transform: 'translateY(-2px)',
-                  boxShadow: theme.custom?.shadow?.listItem || (isDarkMode ? '0 4px 15px rgba(0, 0, 0, 0.3)' : '0 4px 15px rgba(0, 0, 0, 0.1)'),
+                  boxShadow: muiTheme.custom?.shadow?.listItem || (theme.isDarkMode ? '0 4px 15px rgba(0, 0, 0, 0.3)' : '0 4px 15px rgba(0, 0, 0, 0.1)'),
                 },
               },
               '& .MuiInputLabel-root': {
                 fontFamily: "'Poppins', sans-serif",
-                color: theme.palette.text?.secondary || '#666',
+                color: muiTheme.palette.text?.secondary || '#666',
               },
               '& .MuiInputBase-input': {
                 fontFamily: "'Poppins', sans-serif",
-                color: theme.palette.text?.primary || '#333',
+                color: muiTheme.palette.text?.primary || '#333',
               },
             }}
             disabled={loading}
@@ -201,13 +203,13 @@ const ForgotPassword = ({ isDarkMode }) => {
             onClick={handleBackToLogin}
             sx={{
               mt: 2,
-              color: theme.palette.text?.secondary || '#666',
-              borderColor: theme.palette.border?.main || 'rgba(0, 0, 0, 0.1)',
+              color: muiTheme.palette.text?.secondary || '#666',
+              borderColor: muiTheme.palette.border?.main || 'rgba(0, 0, 0, 0.1)',
               borderRadius: '8px',
               py: 1.5,
               transition: 'transform 0.2s, box-shadow 0.3s',
               '&:hover': {
-                borderColor: theme.palette.secondary?.main || '#34A853',
+                borderColor: muiTheme.palette.secondary?.main || '#34A853',
                 boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)',
                 transform: 'scale(1.02)',
               },
@@ -223,7 +225,7 @@ const ForgotPassword = ({ isDarkMode }) => {
             align="center"
             sx={{
               mt: 2,
-              color: theme.palette.success?.main || '#4caf50',
+              color: muiTheme.palette.success?.main || '#4caf50',
               fontFamily: "'Poppins', sans-serif",
             }}
           >
@@ -236,7 +238,7 @@ const ForgotPassword = ({ isDarkMode }) => {
             align="center"
             sx={{
               mt: 2,
-              color: theme.palette.error?.main || '#f44336',
+              color: muiTheme.palette.error?.main || '#f44336',
               fontFamily: "'Poppins', sans-serif",
             }}
           >

@@ -20,13 +20,15 @@ import MenuIcon from '@mui/icons-material/Menu';
 import { Link, useNavigate } from 'react-router-dom';
 import { LightMode, DarkMode, Notifications, Search, Apps, ChevronLeft, ChevronRight, Palette } from '@mui/icons-material';
 import { useAuth } from '../context/AuthContext';
+import { useTheme } from '../hooks/useTheme';
 
-const Navbar = ({ handleDrawerToggle, user, isDarkMode, toggleTheme, isCollapsed, toggleCollapse }) => {
+const Navbar = ({ handleDrawerToggle, user, isCollapsed, toggleCollapse }) => {
   const [anchorEl, setAnchorEl] = useState(null);
   const [notifAnchorEl, setNotifAnchorEl] = useState(null);
   const [appAnchorEl, setAppAnchorEl] = useState(null);
   const [colorAnchorEl, setColorAnchorEl] = useState(null);
   const [searchOpen, setSearchOpen] = useState(false);
+  const { isDarkMode, toggleTheme } = useTheme(); // Access both from context
   const open = Boolean(anchorEl);
   const notifOpen = Boolean(notifAnchorEl);
   const appOpen = Boolean(appAnchorEl);
@@ -75,7 +77,6 @@ const Navbar = ({ handleDrawerToggle, user, isDarkMode, toggleTheme, isCollapsed
   };
 
   const handleColorSelect = (color) => {
-    // Update theme primary color (requires theme update in App.js)
     console.log(`Selected color: ${color}`);
     handleColorClose();
   };
@@ -334,7 +335,7 @@ const Navbar = ({ handleDrawerToggle, user, isDarkMode, toggleTheme, isCollapsed
           </Menu>
           <Switch
             checked={isDarkMode}
-            onChange={toggleTheme}
+            onChange={toggleTheme} // Use context toggleTheme
             icon={<LightMode sx={{ color: '#ffb300' }} />}
             checkedIcon={<DarkMode sx={{ color: '#1976d2' }} />}
           />

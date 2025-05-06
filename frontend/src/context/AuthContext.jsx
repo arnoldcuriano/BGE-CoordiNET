@@ -12,44 +12,30 @@ export const AuthProvider = ({ children }) => {
     lastName: null,
     profilePicture: null,
     isApproved: false,
+    accessPermissions: {},
   });
 
-  useEffect(() => {
-    let isMounted = true;
-    const checkAuth = async () => {
-      if (!isMounted) return;
-      try {
-        console.log('AuthContext: Starting auth check at', new Date().toISOString());
-        const response = await axios.get('http://localhost:5000/auth/user', { 
-          withCredentials: true,
-          timeout: 5000 // Timeout after 5 seconds
+  const fetchUser = async () => {
+    try {
+      console.log('AuthContext: Starting auth check at', new Date().toISOString());
+      const response = await axios.get('http://localhost:5000/auth/user', { 
+        withCredentials: true,
+        timeout: 5000
+      });
+      console.log('AuthContext: /auth/user response received at', new Date().toISOString(), response.data);
+      if (response.data) {
+        setAuthState({
+          loading: false,
+          isAuthenticated: true,
+          userRole: response.data.role,
+          firstName: response.data.firstName,
+          lastName: response.data.lastName,
+          profilePicture: response.data.profilePicture,
+          isApproved: response.data.isApproved || false,
+          accessPermissions: response.data.accessPermissions || {},
         });
-        console.log('AuthContext: /auth/user response received at', new Date().toISOString(), response.data);
-        if (response.data) {
-          setAuthState({
-            loading: false,
-            isAuthenticated: true,
-            userRole: response.data.role,
-            firstName: response.data.firstName,
-            lastName: response.data.lastName,
-            profilePicture: response.data.profilePicture,
-            isApproved: response.data.isApproved || false,
-          });
-          console.log('AuthContext: User authenticated:', response.data);
-        } else {
-          setAuthState({
-            loading: false,
-            isAuthenticated: false,
-            userRole: null,
-            firstName: null,
-            lastName: null,
-            profilePicture: null,
-            isApproved: false,
-          });
-          console.log('AuthContext: No user authenticated');
-        }
-      } catch (error) {
-        console.error('AuthContext: Auth check failed at', new Date().toISOString(), error.message, error.response?.data);
+        console.log('AuthContext: User authenticated:', response.data);
+      } else {
         setAuthState({
           loading: false,
           isAuthenticated: false,
@@ -58,11 +44,32 @@ export const AuthProvider = ({ children }) => {
           lastName: null,
           profilePicture: null,
           isApproved: false,
+          accessPermissions: {},
         });
+        console.log('AuthContext: No user authenticated');
       }
+    } catch (error) {
+      console.error('AuthContext: Auth check failed at', new Date().toISOString(), error.message, error.response?.data);
+      setAuthState({
+        loading: false,
+        isAuthenticated: false,
+        userRole: null,
+        firstName: null,
+        lastName: null,
+        profilePicture: null,
+        isApproved: false,
+        accessPermissions: {},
+      });
+    }
+  };
+
+  useEffect(() => {
+    let isMounted = true;
+    const checkAuth = async () => {
+      if (!isMounted) return;
+      await fetchUser();
     };
 
-    // Fallback timeout to ensure loading state is unset if the request hangs
     const timeoutId = setTimeout(() => {
       if (isMounted) {
         console.warn('AuthContext: Auth check timed out after 10 seconds, forcing loading to false');
@@ -71,7 +78,7 @@ export const AuthProvider = ({ children }) => {
           loading: false,
         }));
       }
-    }, 10000); // 10 seconds fallback
+    }, 10000);
 
     console.log('AuthContext: Initiating auth check at', new Date().toISOString());
     checkAuth();
@@ -81,6 +88,13 @@ export const AuthProvider = ({ children }) => {
       clearTimeout(timeoutId);
     };
   }, []);
+
+  // Re-fetch user data when isAuthenticated changes (e.g., after login)
+  useEffect(() => {
+    if (authState.isAuthenticated) {
+      fetchUser();
+    }
+  }, [authState.isAuthenticated]);
 
   const handleLogout = async () => {
     try {
@@ -95,6 +109,7 @@ export const AuthProvider = ({ children }) => {
         lastName: null,
         profilePicture: null,
         isApproved: false,
+        accessPermissions: {},
       });
       console.log('AuthContext: Logout successful');
       return true;
@@ -108,6 +123,7 @@ export const AuthProvider = ({ children }) => {
         lastName: null,
         profilePicture: null,
         isApproved: false,
+        accessPermissions: {},
       });
       return false;
     }
