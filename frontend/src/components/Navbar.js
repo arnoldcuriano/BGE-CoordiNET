@@ -12,24 +12,22 @@ import {
   Tooltip,
   TextField,
   Badge,
-  List,
-  ListItem,
-  ListItemText,
 } from '@mui/material';
 import MenuIcon from '@mui/icons-material/Menu';
+import CloseIcon from '@mui/icons-material/Close';
 import { Link, useNavigate } from 'react-router-dom';
-import { LightMode, DarkMode, Notifications, Search, Apps, ChevronLeft, ChevronRight, Palette } from '@mui/icons-material';
+import { LightMode, DarkMode, Notifications, Search, Apps, Palette } from '@mui/icons-material';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../hooks/useTheme';
 
-const Navbar = ({ handleDrawerToggle, user, isCollapsed, toggleCollapse }) => {
+const Navbar = ({ handleDrawerToggle, user, open, handleDrawerOpen, handleDrawerClose }) => {
   const [anchorEl, setAnchorEl] = useState(null);
   const [notifAnchorEl, setNotifAnchorEl] = useState(null);
   const [appAnchorEl, setAppAnchorEl] = useState(null);
   const [colorAnchorEl, setColorAnchorEl] = useState(null);
   const [searchOpen, setSearchOpen] = useState(false);
-  const { isDarkMode, toggleTheme } = useTheme(); // Access both from context
-  const open = Boolean(anchorEl);
+  const { isDarkMode, toggleTheme } = useTheme();
+  const menuOpen = Boolean(anchorEl);
   const notifOpen = Boolean(notifAnchorEl);
   const appOpen = Boolean(appAnchorEl);
   const colorOpen = Boolean(colorAnchorEl);
@@ -81,6 +79,20 @@ const Navbar = ({ handleDrawerToggle, user, isCollapsed, toggleCollapse }) => {
     handleColorClose();
   };
 
+  const handleSidebarToggle = () => {
+    if (window.innerWidth < 600) {
+      // On mobile (xs), toggle the temporary drawer
+      handleDrawerToggle();
+    } else {
+      // On desktop (sm and up), toggle the permanent drawer's open state
+      if (open) {
+        handleDrawerClose();
+      } else {
+        handleDrawerOpen();
+      }
+    }
+  };
+
   const notifications = [
     { id: 1, message: 'New member added to the team' },
     { id: 2, message: 'Project deadline approaching' },
@@ -101,7 +113,7 @@ const Navbar = ({ handleDrawerToggle, user, isCollapsed, toggleCollapse }) => {
     <AppBar
       position="fixed"
       sx={{
-        zIndex: (theme) => theme.zIndex.drawer + 1,
+        zIndex: (theme) => theme.zIndex.drawer + 1, // 1201
         background: isDarkMode
           ? 'linear-gradient(90deg, rgba(26, 26, 46, 0.9) 0%, rgba(22, 33, 62, 0.9) 100%)'
           : 'linear-gradient(90deg, rgba(224, 247, 250, 0.9) 0%, rgba(179, 229, 252, 0.9) 100%)',
@@ -112,25 +124,28 @@ const Navbar = ({ handleDrawerToggle, user, isCollapsed, toggleCollapse }) => {
         borderBottom: isDarkMode
           ? '1px solid rgba(255, 255, 255, 0.1)'
           : '1px solid rgba(0, 0, 0, 0.1)',
+        height: '64px', // Fixed height
       }}
     >
-      <Toolbar>
+      <Toolbar
+        sx={{
+          height: '64px',
+          minHeight: '64px !important',
+          paddingLeft: { xs: 0, sm: 0 }, // Override all screen sizes
+          paddingRight: { xs: '16px', sm: '24px' },
+        }}
+      >
         <IconButton
-          color="inherit"
-          aria-label="open drawer"
-          edge="start"
-          onClick={handleDrawerToggle}
-          sx={{ mr: 2, display: { sm: 'none' } }}
-        >
-          <MenuIcon />
-        </IconButton>
-        <IconButton
-          color="inherit"
-          aria-label={isCollapsed ? 'expand sidebar' : 'collapse sidebar'}
-          onClick={toggleCollapse}
-          sx={{ mr: 2, display: { xs: 'none', sm: 'inline-flex' } }}
-        >
-          {isCollapsed ? <ChevronRight /> : <ChevronLeft />}
+         color="inherit"
+         aria-label={open ? "close drawer" : "open drawer"}
+         edge="start"
+         onClick={handleSidebarToggle}
+         sx={{ 
+           mr: 2, 
+           ml: 1 // Remove left margin
+         }}
+       >
+          {open ? <CloseIcon /> : <MenuIcon />}
         </IconButton>
         <Typography
           variant="h6"
@@ -335,7 +350,7 @@ const Navbar = ({ handleDrawerToggle, user, isCollapsed, toggleCollapse }) => {
           </Menu>
           <Switch
             checked={isDarkMode}
-            onChange={toggleTheme} // Use context toggleTheme
+            onChange={toggleTheme}
             icon={<LightMode sx={{ color: '#ffb300' }} />}
             checkedIcon={<DarkMode sx={{ color: '#1976d2' }} />}
           />
@@ -376,7 +391,7 @@ const Navbar = ({ handleDrawerToggle, user, isCollapsed, toggleCollapse }) => {
               </Tooltip>
               <Menu
                 anchorEl={anchorEl}
-                open={open}
+                open={menuOpen}
                 onClose={handleClose}
                 PaperProps={{
                   sx: {
