@@ -1,11 +1,14 @@
-import React from 'react';
+import React, { useContext } from 'react';
 import { Box, Typography, Button } from '@mui/material';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { ThemeContext } from '../context/ThemeContext';
 
-const NoAccess = ({ isDarkMode, toggleTheme }) => {
+const NoAccess = () => {
   const navigate = useNavigate();
   const { handleLogout } = useAuth();
+  const { state } = useLocation();
+  const { isDarkMode } = useContext(ThemeContext);
 
   return (
     <Box
@@ -40,12 +43,12 @@ const NoAccess = ({ isDarkMode, toggleTheme }) => {
           mb: 3,
         }}
       >
-        You do not have access to this page. Please contact an administrator.
+        {state?.message || 'You do not have access to this page. Please contact an administrator.'}
       </Typography>
       <Box sx={{ display: 'flex', gap: 2 }}>
         <Button
           variant="contained"
-          onClick={() => navigate('/login')}
+          onClick={() => navigate('/dashboard')}
           sx={{
             fontFamily: '"Poppins", sans-serif',
             background: 'linear-gradient(90deg, #4285F4, #34A853)',
@@ -57,11 +60,11 @@ const NoAccess = ({ isDarkMode, toggleTheme }) => {
             },
           }}
         >
-          Go to Login
+          Go to Dashboard
         </Button>
         <Button
           variant="outlined"
-          onClick={() => handleLogout(navigate)}
+          onClick={() => handleLogout().then(() => navigate('/login'))}
           sx={{
             fontFamily: '"Poppins", sans-serif',
             color: isDarkMode ? '#ffffff' : '#1976d2',

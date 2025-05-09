@@ -36,31 +36,28 @@ export const AuthProvider = ({ children }) => {
         });
         console.log('AuthContext: User authenticated:', response.data);
       } else {
-        setAuthState({
+        setAuthState((prev) => ({
+          ...prev,
           loading: false,
           isAuthenticated: false,
           userRole: null,
-          firstName: null,
-          lastName: null,
-          profilePicture: null,
-          isApproved: false,
-          accessPermissions: {},
-        });
+        }));
         console.log('AuthContext: No user authenticated');
       }
     } catch (error) {
       console.error('AuthContext: Auth check failed at', new Date().toISOString(), error.message, error.response?.data);
-      setAuthState({
+      setAuthState((prev) => ({
+        ...prev,
         loading: false,
         isAuthenticated: false,
         userRole: null,
-        firstName: null,
-        lastName: null,
-        profilePicture: null,
-        isApproved: false,
-        accessPermissions: {},
-      });
+      }));
     }
+  };
+
+  const refreshUser = async () => {
+    console.log('AuthContext: Refreshing user data');
+    await fetchUser();
   };
 
   useEffect(() => {
@@ -71,7 +68,7 @@ export const AuthProvider = ({ children }) => {
     };
 
     const timeoutId = setTimeout(() => {
-      if (isMounted) {
+      if (isMounted && authState.loading) {
         console.warn('AuthContext: Auth check timed out after 10 seconds, forcing loading to false');
         setAuthState((prev) => ({
           ...prev,
@@ -80,7 +77,6 @@ export const AuthProvider = ({ children }) => {
       }
     }, 10000);
 
-    console.log('AuthContext: Initiating auth check at', new Date().toISOString());
     checkAuth();
 
     return () => {
@@ -89,12 +85,12 @@ export const AuthProvider = ({ children }) => {
     };
   }, []);
 
-  // Re-fetch user data when isAuthenticated changes (e.g., after login)
   useEffect(() => {
-    if (authState.isAuthenticated) {
-      fetchUser();
+    if (authState.isAuthenticated && (!authState.userRole || Object.keys(authState.accessPermissions || {}).length === 0)) {
+      console.log('AuthContext: Retrying fetch due to incomplete auth data');
+      refreshUser();
     }
-  }, [authState.isAuthenticated]);
+  }, [authState.isAuthenticated, authState.userRole, authState.accessPermissions]);
 
   const handleLogout = async () => {
     try {
@@ -130,7 +126,7 @@ export const AuthProvider = ({ children }) => {
   };
 
   return (
-    <AuthContext.Provider value={{ authState, setAuthState, handleLogout }}>
+    <AuthContext.Provider value={{ authState, setAuthState, handleLogout, refreshUser, fetchUser }}>
       {children}
     </AuthContext.Provider>
   );

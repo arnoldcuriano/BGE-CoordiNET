@@ -19,9 +19,13 @@ const Welcome = ({ isDarkMode, toggleTheme }) => {
 
   return (
     <Layout isDarkMode={isDarkMode} toggleTheme={toggleTheme} user={user}>
-      <Box sx={{ mt: 8, p: 2 }}>
-        <Typography variant="h4">Welcome</Typography>
-        <Typography>The Admin is preparing your access.</Typography>
+      <Box sx={{ mt: 8, p: 2, textAlign: 'center' }}>
+        <Typography variant="h4" gutterBottom>
+          Welcome, {user?.firstName || 'User'}!
+        </Typography>
+        <Typography variant="body1" sx={{ maxWidth: '600px', mx: 'auto', color: isDarkMode ? '#ccc' : '#666' }}>
+          Your account has been approved, but access to specific features is still being prepared by the admin. Please check back later or contact support for assistance.
+        </Typography>
       </Box>
     </Layout>
   );

@@ -76,7 +76,7 @@ const Login = () => {
   const [message, setMessage] = useState('');
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const { authState, setAuthState } = useAuth();
+  const { fetchUser, authState } = useAuth();
 
   console.log('Login.js: Rendering Login component');
   console.log('Login.js: authState:', authState);
@@ -90,8 +90,14 @@ const Login = () => {
       const loginSuccess = searchParams.get('loginSuccess');
       console.log('Login.js: loginSuccess param:', loginSuccess);
 
-      if (authState.isAuthenticated) {
-        const redirectPath = authState.userRole === 'viewer' && !authState.isApproved ? '/welcome' : '/dashboard';
+      if (authState.isAuthenticated && !authState.loading) {
+        const redirectPath = authState.role === 'superadmin'
+          ? '/superadmin-dashboard'
+          : authState.role === 'viewer' && authState.accessPermissions?.dashboard
+          ? '/dashboard'
+          : authState.isApproved && !Object.values(authState.accessPermissions || {}).some(permission => permission === true)
+          ? '/welcome'
+          : '/no-access';
         console.log('Login.js: User already authenticated, redirecting to:', redirectPath);
         navigate(redirectPath, { replace: true });
         return;
@@ -101,22 +107,15 @@ const Login = () => {
         console.log('Login.js: Google login redirect detected');
         try {
           setGoogleLoading(true);
-          const response = await axios.get('http://localhost:5000/auth/user', { 
-            withCredentials: true,
-            timeout: 5000
-          });
-          console.log('Login.js: /auth/user response after Google login:', response.data);
-          if (response.data) {
-            setAuthState({
-              loading: false,
-              isAuthenticated: true,
-              userRole: response.data.role,
-              firstName: response.data.firstName,
-              lastName: response.data.lastName,
-              profilePicture: response.data.profilePicture,
-              isApproved: response.data.isApproved || false,
-            });
-            const redirectPath = response.data.role === 'viewer' && !response.data.isApproved ? '/welcome' : '/dashboard';
+          await fetchUser();
+          if (authState.isAuthenticated && !authState.loading) {
+            const redirectPath = authState.role === 'superadmin'
+              ? '/superadmin-dashboard'
+              : authState.role === 'viewer' && authState.accessPermissions?.dashboard
+              ? '/dashboard'
+              : authState.isApproved && !Object.values(authState.accessPermissions || {}).some(permission => permission === true)
+              ? '/welcome'
+              : '/no-access';
             console.log('Login.js: Authentication successful, redirecting to:', redirectPath);
             navigate(redirectPath, { replace: true });
           } else {
@@ -139,7 +138,7 @@ const Login = () => {
     } else {
       console.log('Login.js: Skipping handleAuth because authState.loading is true');
     }
-  }, [authState, navigate, searchParams, setAuthState]);
+  }, [authState, navigate, searchParams]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -152,21 +151,19 @@ const Login = () => {
         { email, password, rememberMe },
         { withCredentials: true }
       );
-      const userResponse = await axios.get('http://localhost:5000/auth/user', { withCredentials: true });
-      console.log('Login.js: Local login user response:', userResponse.data);
-      if (userResponse.data) {
-        setAuthState({
-          loading: false,
-          isAuthenticated: true,
-          userRole: userResponse.data.role,
-          firstName: userResponse.data.firstName,
-          lastName: userResponse.data.lastName,
-          profilePicture: userResponse.data.profilePicture,
-          isApproved: userResponse.data.isApproved || false,
-        });
-        const redirectPath = userResponse.data.role === 'viewer' && !userResponse.data.isApproved ? '/welcome' : '/dashboard';
+      await fetchUser();
+      if (authState.isAuthenticated && !authState.loading) {
+        const redirectPath = authState.role === 'superadmin'
+          ? '/superadmin-dashboard'
+          : authState.role === 'viewer' && authState.accessPermissions?.dashboard
+          ? '/dashboard'
+          : authState.isApproved && !Object.values(authState.accessPermissions || {}).some(permission => permission === true)
+          ? '/welcome'
+          : '/no-access';
         console.log('Login.js: Local login successful, redirecting to:', redirectPath);
         navigate(redirectPath, { replace: true });
+      } else {
+        setMessage('Authentication failed. Please try again.');
       }
     } catch (error) {
       console.error('Login.js: Local login error:', error.message, error.response?.data);

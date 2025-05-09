@@ -1,4 +1,4 @@
-import React, { useState,  useMemo } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   Drawer,
   List,
@@ -19,20 +19,21 @@ import {
 } from '@mui/material';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import DashboardIcon from '@mui/icons-material/Dashboard';
-import PeopleIcon from '@mui/icons-material/People';
 import AdminPanelSettingsIcon from '@mui/icons-material/AdminPanelSettings';
-import BusinessIcon from '@mui/icons-material/Business';
-import WorkIcon from '@mui/icons-material/Work';
-import InventoryIcon from '@mui/icons-material/Inventory';
+import CreateNewFolderIcon from '@mui/icons-material/CreateNewFolder';
 import AutoFixHighIcon from '@mui/icons-material/AutoFixHigh';
 import MoreVertIcon from '@mui/icons-material/MoreVert';
 import GroupIcon from '@mui/icons-material/Group';
-import HelpOutlineIcon from '@mui/icons-material/HelpOutline';
+import HelpIcon from '@mui/icons-material/Help';
+import AddBusinessIcon from '@mui/icons-material/AddBusiness';
+import DevicesOtherIcon from '@mui/icons-material/DevicesOther';
 import DescriptionIcon from '@mui/icons-material/Description';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import ExpandLessIcon from '@mui/icons-material/ExpandLess';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../hooks/useTheme';
+import AddCardIcon from '@mui/icons-material/AddCard';
+import PeopleIcon from '@mui/icons-material/People';
 
 const Sidebar = ({
   mobileOpen,
@@ -54,9 +55,9 @@ const Sidebar = ({
   const accessPermissions = useMemo(() => authState.accessPermissions || {}, [authState.accessPermissions]);
   const isLoading = authState.loading;
 
-  // Fallback to authState.userRole if propUser is undefined
+  // Fallback to authState.role instead of authState.userRole
   const user = useMemo(() => propUser || {
-    role: authState.userRole,
+    role: authState.role,
     firstName: authState.firstName,
     lastName: authState.lastName,
     profilePicture: authState.profilePicture
@@ -88,14 +89,17 @@ const Sidebar = ({
     setOpenSubmenu((prev) => !prev);
   };
 
+  // Updated menu items with Members as a submenu under HR Management
   const menuItems = [
     { text: 'Dashboard', icon: <DashboardIcon />, path: '/dashboard', roles: ['admin', 'superadmin', 'viewer'], permissionKey: 'dashboard' },
-    { text: 'Members', icon: <PeopleIcon />, path: '/members', roles: ['superadmin', 'viewer'], permissionKey: 'members' },
-    { text: 'Partners', icon: <BusinessIcon />, path: '/partners', roles: ['superadmin', 'viewer'], permissionKey: 'partners' },
-    { text: 'HR Management', icon: <GroupIcon />, path: '/hr-management', roles: ['superadmin', 'viewer'], permissionKey: 'hrManagement' },
+    { text: 'Partners', icon: <AddBusinessIcon/>, path: '/partners', roles: ['superadmin', 'viewer'], permissionKey: 'partners' },
+    { text: 'HR Management', icon: <GroupIcon />, path: '/hr-management', roles: ['superadmin', 'admin'], permissionKey: 'hrManagement', subItems: [
+      { text: 'Members', path: '/hr-management/members' },
+    ]},
+    { text: 'Finance Management', icon: <AddCardIcon />, path: '/finance-management', roles: ['superadmin'], permissionKey: 'settings' },
     {
       text: 'Projects',
-      icon: <WorkIcon />,
+      icon: <CreateNewFolderIcon />,
       path: '/projects',
       roles: ['superadmin', 'viewer'],
       permissionKey: 'projects',
@@ -104,13 +108,13 @@ const Sidebar = ({
         { text: 'Archived Projects', path: '/projects/archived' },
       ],
     },
-    { text: 'IT Inventory', icon: <InventoryIcon />, path: '/it-inventory', roles: ['superadmin', 'viewer'], permissionKey: 'itInventory' },
+    { text: 'IT Inventory', icon: <DevicesOtherIcon />, path: '/it-inventory', roles: ['superadmin', 'viewer'], permissionKey: 'itInventory' },
     { text: 'Quick Tools', icon: <AutoFixHighIcon />, path: '/quick-tools', roles: ['superadmin', 'viewer'], permissionKey: 'quickTools' },
     { text: 'Super Admin Dashboard', icon: <AdminPanelSettingsIcon />, path: '/superadmin-dashboard', roles: ['superadmin'], permissionKey: 'superadminDashboard' },
   ];
 
   const knowledgeBaseItems = [
-    { text: 'Help', icon: <HelpOutlineIcon />, path: '/help' },
+    { text: 'Help', icon: <HelpIcon />, path: '/help' },
     { text: 'Patch Notes', icon: <DescriptionIcon />, path: '/patch-notes' },
   ];
 

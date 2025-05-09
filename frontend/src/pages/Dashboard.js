@@ -18,7 +18,7 @@ const HRManagement = ({ isDarkMode, toggleTheme }) => {
     <Layout isDarkMode={isDarkMode} toggleTheme={toggleTheme} user={user}>
       <Box sx={{ mt: 8, p: 2 }}>
         <Typography variant="h4" sx={{ fontFamily: '"Poppins", sans-serif' }}>Dashboard</Typography>
-        <Typography sx={{ fontFamily: '"Poppins", sans-serif' }}>Coming soon...</Typography>
+        <Typography sx={{ fontFamily: '"Poppins", sans-serif' }}>Content Here</Typography>
       </Box>
     </Layout>
   );

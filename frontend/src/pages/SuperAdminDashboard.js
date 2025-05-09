@@ -326,6 +326,10 @@ const SuperAdminDashboard = () => {
 
   const handleSaveAccess = async () => {
     if (!selectedMember) return;
+    if (selectedMember.role === 'superadmin') {
+      setSnackbar({ open: true, message: 'Cannot change access for superadmin members', severity: 'warning' });
+      return;
+    }
     try {
       await axios.put(
         'http://localhost:5000/auth/update-access',
@@ -337,7 +341,7 @@ const SuperAdminDashboard = () => {
           m._id === selectedMember._id ? { ...m, accessPermissions: tempPermissions } : m
         )
       );
-      setSnackbar({ open: true, message: 'Access updated successfully', severity: 'success' });
+      setSnackbar({ open: true, message: 'Access updated successfully. User may need to log out and back in.', severity: 'success' });
       handleCloseModal();
     } catch (error) {
       console.error('Error updating access:', error.response?.data || error.message);
@@ -345,9 +349,18 @@ const SuperAdminDashboard = () => {
     }
   };
 
+  const hasSuperadminSelected = selectedApproved.some(id => {
+    const member = approvedMembers.find(m => m._id === id);
+    return member && member.role === 'superadmin';
+  });
+
   const handleBulkAccessChange = async (page, checked) => {
     if (selectedApproved.length === 0) {
       setSnackbar({ open: true, message: 'No members selected', severity: 'warning' });
+      return;
+    }
+    if (hasSuperadminSelected) {
+      setSnackbar({ open: true, message: 'Cannot change access for superadmin members', severity: 'warning' });
       return;
     }
     try {
@@ -371,7 +384,7 @@ const SuperAdminDashboard = () => {
       );
       setSnackbar({
         open: true,
-        message: `Updated ${page} access for ${selectedApproved.length} members`,
+        message: `Updated ${page} access for ${selectedApproved.length} members. Users may need to log out and back in.`,
         severity: 'success',
       });
     } catch (error) {
@@ -755,7 +768,7 @@ const SuperAdminDashboard = () => {
                       control={
                         <Checkbox
                           onChange={(e) => handleBulkAccessChange(page.key, e.target.checked)}
-                          disabled={selectedApproved.length === 0}
+                          disabled={selectedApproved.length === 0 || hasSuperadminSelected}
                           sx={{
                             color: isDarkMode ? '#ffffff' : '#1976d2',
                             '&.Mui-checked': { color: muiTheme.palette.secondary.main },
