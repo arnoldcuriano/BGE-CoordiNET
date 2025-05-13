@@ -10,6 +10,7 @@ const nodemailer = require('nodemailer');
 const allowedDomains = ['bgecorp.com', 'beglobalecommercecorp.com'];
 
 // Local Login
+// In authLocal.js
 router.post('/login', (req, res, next) => {
   const { rememberMe } = req.body;
   console.log('Login request received, rememberMe:', rememberMe);
@@ -39,11 +40,6 @@ router.post('/login', (req, res, next) => {
       }
 
       console.log('User authenticated successfully:', user.email);
-      const token = jwt.sign(
-        { id: user._id, role: user.role }, 
-        process.env.JWT_SECRET, 
-        { expiresIn: '1h' }
-      );
       res.json({ 
         user: {
           id: user._id,
@@ -54,7 +50,6 @@ router.post('/login', (req, res, next) => {
           profilePicture: user.profilePicture,
           accessPermissions: user.accessPermissions,
         },
-        token,
         redirect: user.role === 'viewer' ? '/welcome' : '/dashboard'
       });
     });

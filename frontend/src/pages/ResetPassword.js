@@ -9,7 +9,11 @@ import {
   useTheme as useMuiTheme,
   keyframes,
   CircularProgress,
+  IconButton,
+  InputAdornment,
 } from '@mui/material';
+import Visibility from '@mui/icons-material/Visibility';
+import VisibilityOff from '@mui/icons-material/VisibilityOff';
 import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../hooks/useTheme';
@@ -40,6 +44,8 @@ const ResetPassword = () => {
   const muiTheme = useMuiTheme();
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -101,6 +107,14 @@ const ResetPassword = () => {
     navigate('/login');
   };
 
+  const handleTogglePasswordVisibility = () => {
+    setShowPassword((prev) => !prev);
+  };
+
+  const handleToggleConfirmPasswordVisibility = () => {
+    setShowConfirmPassword((prev) => !prev);
+  };
+
   return (
     <Box
       sx={{
@@ -155,13 +169,31 @@ const ResetPassword = () => {
         <form onSubmit={handleSubmit}>
           <TextField
             label="New Password"
-            type="password"
+            type={showPassword ? 'text' : 'password'}
             fullWidth
             margin="normal"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             required
             variant="outlined"
+            InputProps={{
+              endAdornment: (
+                <InputAdornment position="end">
+                  <IconButton
+                    onClick={handleTogglePasswordVisibility}
+                    edge="end"
+                    sx={{
+                      color: muiTheme.palette.text?.secondary || '#666',
+                      '&:hover': {
+                        color: muiTheme.palette.secondary?.main || '#34A853',
+                      },
+                    }}
+                  >
+                    {showPassword ? <VisibilityOff /> : <Visibility />}
+                  </IconButton>
+                </InputAdornment>
+              ),
+            }}
             sx={{
               '& .MuiOutlinedInput-root': {
                 borderRadius: '8px',
@@ -199,13 +231,31 @@ const ResetPassword = () => {
           />
           <TextField
             label="Confirm Password"
-            type="password"
+            type={showConfirmPassword ? 'text' : 'password'}
             fullWidth
             margin="normal"
             value={confirmPassword}
             onChange={(e) => setConfirmPassword(e.target.value)}
             required
             variant="outlined"
+            InputProps={{
+              endAdornment: (
+                <InputAdornment position="end">
+                  <IconButton
+                    onClick={handleToggleConfirmPasswordVisibility}
+                    edge="end"
+                    sx={{
+                      color: muiTheme.palette.text?.secondary || '#666',
+                      '&:hover': {
+                        color: muiTheme.palette.secondary?.main || '#34A853',
+                      },
+                    }}
+                  >
+                    {showConfirmPassword ? <VisibilityOff /> : <Visibility />}
+                  </IconButton>
+                </InputAdornment>
+              ),
+            }}
             sx={{
               '& .MuiOutlinedInput-root': {
                 borderRadius: '8px',

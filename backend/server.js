@@ -31,7 +31,7 @@ app.use(express.urlencoded({ extended: true }));
 // Session middleware with MongoStore
 app.use(
   session({
-    secret: process.env.SESSION_SECRET || 'your-secret-key',
+    secret: process.env.SESSION_SECRET,
     resave: false,
     saveUninitialized: false,
     store: MongoStore.create({
@@ -80,6 +80,8 @@ app.get('/', (req, res) => {
 
 // Error handling middleware
 app.use((err, req, res, next) => {
+  console.log('Session middleware - Session ID:', req.sessionID);
+  console.log('Session middleware - Session data:', req.session);
   console.error('Server Error:', err);
   res.status(500).json({ error: 'Internal Server Error' });
 });
