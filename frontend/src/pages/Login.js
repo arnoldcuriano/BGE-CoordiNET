@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate, useSearchParams, Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import {
   Typography,
   TextField,
@@ -19,8 +19,7 @@ import {
 import { Public, Settings, ConfirmationNumber, Visibility, VisibilityOff, DarkMode, LightMode } from '@mui/icons-material';
 import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
-import { useTheme as useMuiTheme } from '@mui/material/styles';
-import { useTheme } from '../hooks/useTheme';
+import { useTheme } from '../context/ThemeContext';
 
 // Define animations
 const fadeIn = keyframes`
@@ -65,8 +64,9 @@ const glow = keyframes`
 `;
 
 const Login = () => {
-  const muiTheme = useMuiTheme();
-  const { isDarkMode, toggleTheme } = useTheme();
+  console.log('Login.js: Component function called');
+
+  const { isDarkMode, toggleTheme, muiTheme } = useTheme();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -74,71 +74,81 @@ const Login = () => {
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
   const [message, setMessage] = useState('');
-  const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
   const { fetchUser, authState } = useAuth();
+  const navigate = useNavigate();
 
+  // Define the greenlight color from branding
+  const greenLightColor = '#34A853'; // Solid green for text and borders
+  const greenLightHoverBackground = 'rgba(52, 168, 83, 0.1)'; // Light green for backgrounds
+
+  console.log('Login.js: useTheme values:', { isDarkMode, toggleTheme, muiTheme });
+  console.log('Login.js: useAuth values:', { fetchUser, authState });
   console.log('Login.js: Rendering Login component');
   console.log('Login.js: authState:', authState);
-  console.log('Login.js: searchParams:', searchParams.toString());
   console.log('Login.js: isDarkMode from ThemeContext:', isDarkMode);
+  console.log('Login.js: muiTheme text.primary:', muiTheme?.palette?.text?.primary);
+  console.log('Login.js: muiTheme text.secondary:', muiTheme?.palette?.text?.secondary);
 
+  // Redirect if authenticated
   useEffect(() => {
-    console.log('Login.js: useEffect triggered, authState:', authState, 'searchParams:', searchParams.toString());
-
-    const handleAuth = async () => {
-      const loginSuccess = searchParams.get('loginSuccess');
-      console.log('Login.js: loginSuccess param:', loginSuccess);
-
-      if (authState.isAuthenticated && !authState.loading) {
-        const redirectPath = authState.role === 'superadmin'
-          ? '/superadmin-dashboard'
-          : authState.role === 'viewer' && authState.accessPermissions?.dashboard
-          ? '/dashboard'
-          : authState.isApproved && !Object.values(authState.accessPermissions || {}).some(permission => permission === true)
-          ? '/welcome'
-          : '/no-access';
-        console.log('Login.js: User already authenticated, redirecting to:', redirectPath);
-        navigate(redirectPath, { replace: true });
+    if (authState.isAuthenticated) {
+      console.log('Login.js: User is authenticated, determining redirect...');
+      if (!authState.isApproved) {
+        console.log('Login.js: User not approved, redirecting to /welcome');
+        navigate('/welcome', { state: { message: 'Your account is awaiting approval.' }, replace: true });
         return;
       }
 
-      if (loginSuccess) {
-        console.log('Login.js: Google login redirect detected');
-        try {
-          setGoogleLoading(true);
-          await fetchUser();
-          if (authState.isAuthenticated && !authState.loading) {
-            const redirectPath = authState.role === 'superadmin'
-              ? '/superadmin-dashboard'
-              : authState.role === 'viewer' && authState.accessPermissions?.dashboard
-              ? '/dashboard'
-              : authState.isApproved && !Object.values(authState.accessPermissions || {}).some(permission => permission === true)
-              ? '/welcome'
-              : '/no-access';
-            console.log('Login.js: Authentication successful, redirecting to:', redirectPath);
-            navigate(redirectPath, { replace: true });
-          } else {
-            console.log('Login.js: No user data received after Google login');
-            setMessage('Failed to verify Google login');
-            navigate('/login', { replace: true });
-          }
-        } catch (error) {
-          console.error('Login.js: Post-auth verification failed:', error.message, error.response?.data);
-          setMessage('Failed to verify Google login');
-          navigate('/login', { replace: true });
-        } finally {
-          setGoogleLoading(false);
-        }
+      // Superadmins go directly to dashboard
+      if (authState.userRole === 'superadmin') {
+        console.log('Login.js: Superadmin detected, redirecting to /dashboard');
+        navigate('/dashboard', { replace: true });
+        return;
       }
-    };
 
-    if (!authState.loading) {
-      handleAuth();
-    } else {
-      console.log('Login.js: Skipping handleAuth because authState.loading is true');
+      // Define core system page keys (excluding public routes)
+      const corePageKeys = [
+        'dashboard',
+        'member',
+        'partners',
+        'hrManagement',
+        'projects',
+        'itInventory',
+        'quickTools',
+        'superadminDashboard',
+        'analytics',
+        'financeManagement'
+      ];
+
+      // Check if user has access to any core page
+      const hasCoreAccess = corePageKeys.some(key => authState.accessPermissions?.[key] === true);
+
+      if (hasCoreAccess) {
+        // Redirect to the first accessible core page
+        const redirectRoutes = [
+          { key: 'dashboard', path: '/dashboard' },
+          { key: 'hrManagement', path: '/hr-management' },
+          { key: 'partners', path: '/partners' },
+          { key: 'projects', path: '/projects' },
+          { key: 'itInventory', path: '/it-inventory' },
+          { key: 'quickTools', path: '/quick-tools' },
+          { key: 'superadminDashboard', path: '/superadmin-dashboard' },
+          { key: 'analytics', path: '/analytics' },
+          { key: 'financeManagement', path: '/finance-management' },
+        ];
+
+        const accessibleRoute = redirectRoutes.find(route => authState.accessPermissions?.[route.key] === true);
+        const redirectPath = accessibleRoute ? accessibleRoute.path : '/welcome';
+        const redirectState = accessibleRoute ? {} : { message: 'Welcome! Please wait for the Super Admin to assign your permissions.' };
+        console.log('Login.js: Redirecting to:', redirectPath);
+        navigate(redirectPath, { state: redirectState, replace: true });
+      } else {
+        // If no core access, redirect to /welcome
+        console.log('Login.js: No core access, redirecting to /welcome');
+        navigate('/welcome', { state: { message: 'Welcome! Please wait for the Super Admin to assign your permissions.' }, replace: true });
+      }
     }
-  }, [authState, navigate, searchParams]);
+  }, [authState.isAuthenticated, authState.isApproved, authState.userRole, authState.accessPermissions, navigate]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -146,30 +156,27 @@ const Login = () => {
     setMessage('');
     try {
       console.log('Login.js: Local login attempt:', { email, rememberMe });
-      await axios.post(
+      const loginResponse = await axios.post(
         'http://localhost:5000/auth/login',
         { email, password, rememberMe },
         { withCredentials: true }
       );
+      console.log('Login.js: Login request successful, response:', loginResponse.data);
+      console.log('Login.js: Fetching user data after login');
       await fetchUser();
-      if (authState.isAuthenticated && !authState.loading) {
-        const redirectPath = authState.role === 'superadmin'
-          ? '/superadmin-dashboard'
-          : authState.role === 'viewer' && authState.accessPermissions?.dashboard
-          ? '/dashboard'
-          : authState.isApproved && !Object.values(authState.accessPermissions || {}).some(permission => permission === true)
-          ? '/welcome'
-          : '/no-access';
-        console.log('Login.js: Local login successful, redirecting to:', redirectPath);
-        navigate(redirectPath, { replace: true });
-      } else {
-        setMessage('Authentication failed. Please try again.');
-      }
+      console.log('Login.js: fetchUser completed, authState updated:', authState);
     } catch (error) {
       console.error('Login.js: Local login error:', error.message, error.response?.data);
-      setMessage(error.response?.data?.message || 'Login failed. Please check your credentials.');
+      const errorMessage = error.response?.data?.message || 'Login failed. Please check your credentials.';
+      setMessage(errorMessage);
+      console.log('Login.js: Error message set:', errorMessage);
+      // If the backend rejects the login due to unapproved status, redirect to /welcome
+      if (error.response?.status === 403 && error.response?.data?.message === 'Your account is awaiting approval.') {
+        navigate('/welcome', { state: { message: error.response.data.message }, replace: true });
+      }
     } finally {
       setLoading(false);
+      console.log('Login.js: Login attempt completed, loading set to false');
     }
   };
 
@@ -185,16 +192,15 @@ const Login = () => {
 
   const handleForgotPasswordClick = () => {
     console.log('Login.js: Navigating to /forgot-password');
-    navigate('/forgot-password');
   };
 
   const handleSignupClick = () => {
     console.log('Login.js: Navigating to /signup');
-    navigate('/signup');
   };
 
-  if (authState.loading) {
-    console.log('Login.js: authState.loading is true, showing loading indicator');
+  // Show loading indicator only during form submission
+  if (loading || googleLoading) {
+    console.log('Login.js: Form submission in progress, showing loading indicator');
     return (
       <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
         <CircularProgress />
@@ -202,13 +208,15 @@ const Login = () => {
     );
   }
 
+  console.log('Login.js: Rendering login form UI');
+
   return (
     <Box
       key={`login-${isDarkMode}`}
       sx={{
         display: 'flex',
         minHeight: '100vh',
-        background: muiTheme.palette.background.default,
+        background: muiTheme?.palette?.background?.default,
         position: 'relative',
         overflow: 'hidden',
       }}
@@ -238,7 +246,7 @@ const Login = () => {
           checked={isDarkMode}
           onChange={toggleTheme}
           icon={<LightMode sx={{ color: '#ffb300' }} />}
-          checkedIcon={<DarkMode sx={{ color: muiTheme.palette.primary.main }} />}
+          checkedIcon={<DarkMode sx={{ color: muiTheme?.palette?.primary?.main }} />}
         />
       </Box>
       <Box
@@ -248,13 +256,12 @@ const Login = () => {
           flexDirection: 'column',
           justifyContent: 'center',
           alignItems: 'center',
-          color: muiTheme.palette.text.primary,
           padding: { xs: '30px 15px', sm: '40px 20px', md: '60px 40px' },
           textAlign: 'center',
           order: { xs: 2, sm: 1 },
           zIndex: 1,
           position: 'relative',
-          background: isDarkMode ? 'transparent' : 'rgba(255, 255, 255, 0.1)',
+          background: isDarkMode ? 'transparent' : 'rgba(255, 255, 247, 0.1)',
           backdropFilter: isDarkMode ? 'none' : 'blur(15px)',
         }}
       >
@@ -293,8 +300,7 @@ const Login = () => {
             gutterBottom
             sx={{
               fontFamily: "'Poppins', sans-serif",
-              color: muiTheme.palette.primary.main,
-              textShadow: isDarkMode ? '0 0 10px rgba(66, 133, 244, 0.5)' : 'none',
+              color: muiTheme?.palette?.primary?.main,
             }}
           >
             Welcome Back!
@@ -302,19 +308,19 @@ const Login = () => {
           <Box sx={{ mt: '30px' }}>
             {[
               {
-                icon: <Public sx={{ fontSize: 50, color: muiTheme.palette.primary.main }} />,
+                icon: <Public sx={{ fontSize: 50, color: muiTheme?.palette?.primary?.main }} />,
                 title: 'Visit our Main Website',
                 link: 'https://beglobalecommercecorp.com/',
                 text: 'Explore more about us and stay updated.',
               },
               {
-                icon: <Settings sx={{ fontSize: 50, color: muiTheme.palette.primary.main }} />,
+                icon: <Settings sx={{ fontSize: 50, color: muiTheme?.palette?.primary?.main }} />,
                 title: 'Login to GreatDay Account',
                 link: 'https://app.greatdayhr.com/',
                 text: 'Manage your GreatDay profile and tasks.',
               },
               {
-                icon: <ConfirmationNumber sx={{ fontSize: 50, color: muiTheme.palette.primary.main }} />,
+                icon: <ConfirmationNumber sx={{ fontSize: 50, color: muiTheme?.palette?.primary?.main }} />,
                 title: 'Need Support?',
                 link: 'mailto:arnoldcuriano84@gmail.com',
                 text: 'Contact our support team for assistance.',
@@ -325,17 +331,17 @@ const Login = () => {
                 sx={{
                   display: 'flex',
                   alignItems: 'center',
-                  background: muiTheme.palette.background.listItem,
+                  background: muiTheme?.palette?.background?.listItem,
                   borderRadius: '12px',
                   padding: { xs: '16px', sm: '24px' },
                   marginBottom: '16px',
                   transition: 'all 0.3s ease',
-                  border: `1px solid ${muiTheme.palette.border.main}`,
-                  boxShadow: muiTheme.custom?.shadow?.listItem,
+                  border: `1px solid ${muiTheme?.palette?.border?.main}`,
+                  boxShadow: muiTheme?.custom?.shadow?.listItem,
                   '&:hover': {
                     transform: 'translateY(-5px)',
-                    boxShadow: muiTheme.custom?.shadow?.paper,
-                    background: isDarkMode ? 'rgba(255, 255, 255, 0.15)' : 'rgba(255, 255, 255, 0.3)',
+                    boxShadow: muiTheme?.custom?.shadow?.paper,
+                    background: isDarkMode ? 'rgba(255, 255, 255, 0.15)' : greenLightHoverBackground, // Updated hover background
                     animation: `${glow} 1.5s infinite`,
                   },
                 }}
@@ -347,6 +353,7 @@ const Login = () => {
                     sx={{
                       fontFamily: "'Poppins', sans-serif",
                       textDecoration: 'none',
+                      color: muiTheme?.palette?.primary?.main,
                     }}
                   >
                     <MuiLink
@@ -354,9 +361,9 @@ const Login = () => {
                       target="_blank"
                       sx={{
                         textDecoration: 'none',
-                        color: muiTheme.palette.primary.main,
+                        color: muiTheme?.palette?.primary?.main,
                         transition: 'color 0.3s ease',
-                        '&:hover': { color: muiTheme.palette.secondary.main },
+                        '&:hover': { color: greenLightColor }, // Updated hover color
                       }}
                     >
                       {item.title}
@@ -366,7 +373,7 @@ const Login = () => {
                     variant="body2"
                     sx={{
                       fontFamily: "'Poppins', sans-serif",
-                      color: muiTheme.palette.text.secondary,
+                      color: muiTheme?.palette?.text?.secondary,
                     }}
                   >
                     {item.text}
@@ -397,8 +404,8 @@ const Login = () => {
             borderRadius: 3,
             background: isDarkMode ? 'rgba(255, 255, 255, 0.05)' : 'rgba(255, 255, 255, 0.3)',
             backdropFilter: 'blur(10px)',
-            border: `1px solid ${muiTheme.palette.border.main}`,
-            boxShadow: muiTheme.custom?.shadow?.paper,
+            border: `1px solid ${muiTheme?.palette?.border?.main}`,
+            boxShadow: muiTheme?.custom?.shadow?.paper,
             width: { xs: '100%', sm: '90%', md: '75%' },
             maxWidth: '450px',
             animation: message
@@ -413,7 +420,7 @@ const Login = () => {
             gutterBottom
             sx={{
               fontFamily: "'Poppins', sans-serif",
-              color: muiTheme.palette.primary.main,
+              color: muiTheme?.palette?.primary?.main,
             }}
           >
             Sign In
@@ -423,7 +430,7 @@ const Login = () => {
             align="center"
             sx={{
               fontFamily: "'Poppins', sans-serif",
-              color: muiTheme.palette.text.secondary,
+              color: muiTheme?.palette?.text?.secondary,
               mb: 3,
             }}
           >
@@ -442,34 +449,34 @@ const Login = () => {
               sx={{
                 '& .MuiOutlinedInput-root': {
                   borderRadius: '8px',
-                  background: muiTheme.palette.background.listItem,
+                  background: muiTheme?.palette?.background?.listItem,
                   transition: 'all 0.3s ease',
                   '& fieldset': {
-                    borderColor: muiTheme.palette.border.main,
+                    borderColor: muiTheme?.palette?.border?.main,
                   },
                   '&:hover fieldset': {
-                    borderColor: muiTheme.palette.secondary.main,
+                    borderColor: greenLightColor, // Updated hover border color
                   },
                   '&:hover': {
                     transform: 'translateY(-2px)',
-                    boxShadow: muiTheme.custom?.shadow?.listItem,
+                    boxShadow: muiTheme?.custom?.shadow?.listItem,
                   },
                   '&.Mui-focused fieldset': {
-                    borderColor: muiTheme.palette.secondary.main,
-                    boxShadow: `0 0 8px ${muiTheme.palette.secondary.main}33`,
+                    borderColor: greenLightColor, // Updated focused border color
+                    boxShadow: `0 0 8px ${greenLightColor}33`, // Updated focused shadow
                   },
                   '&.Mui-focused': {
                     transform: 'translateY(-2px)',
-                    boxShadow: muiTheme.custom?.shadow?.listItem,
+                    boxShadow: muiTheme?.custom?.shadow?.listItem,
                   },
                 },
                 '& .MuiInputLabel-root': {
                   fontFamily: "'Poppins', sans-serif",
-                  color: muiTheme.palette.text.secondary,
+                  color: muiTheme?.palette?.text?.secondary,
                 },
                 '& .MuiInputBase-input': {
                   fontFamily: "'Poppins', sans-serif",
-                  color: muiTheme.palette.text.primary,
+                  color: muiTheme?.palette?.text?.primary,
                 },
               }}
               disabled={loading || googleLoading}
@@ -489,7 +496,7 @@ const Login = () => {
                     <IconButton
                       onClick={handleTogglePasswordVisibility}
                       edge="end"
-                      sx={{ color: muiTheme.palette.text.secondary }}
+                      sx={{ color: muiTheme?.palette?.text?.secondary }}
                     >
                       {showPassword ? <VisibilityOff /> : <Visibility />}
                     </IconButton>
@@ -499,34 +506,34 @@ const Login = () => {
               sx={{
                 '& .MuiOutlinedInput-root': {
                   borderRadius: '8px',
-                  background: muiTheme.palette.background.listItem,
+                  background: muiTheme?.palette?.background?.listItem,
                   transition: 'all 0.3s ease',
                   '& fieldset': {
-                    borderColor: muiTheme.palette.border.main,
+                    borderColor: muiTheme?.palette?.border?.main,
                   },
                   '&:hover fieldset': {
-                    borderColor: muiTheme.palette.secondary.main,
+                    borderColor: greenLightColor, // Updated hover border color
                   },
                   '&:hover': {
                     transform: 'translateY(-2px)',
-                    boxShadow: muiTheme.custom?.shadow?.listItem,
+                    boxShadow: muiTheme?.custom?.shadow?.listItem,
                   },
                   '&.Mui-focused fieldset': {
-                    borderColor: muiTheme.palette.secondary.main,
-                    boxShadow: `0 0 8px ${muiTheme.palette.secondary.main}33`,
+                    borderColor: greenLightColor, // Updated focused border color
+                    boxShadow: `0 0 8px ${greenLightColor}33`, // Updated focused shadow
                   },
                   '&.Mui-focused': {
                     transform: 'translateY(-2px)',
-                    boxShadow: muiTheme.custom?.shadow?.listItem,
+                    boxShadow: muiTheme?.custom?.shadow?.listItem,
                   },
                 },
                 '& .MuiInputLabel-root': {
                   fontFamily: "'Poppins', sans-serif",
-                  color: muiTheme.palette.text.secondary,
+                  color: muiTheme?.palette?.text?.secondary,
                 },
                 '& .MuiInputBase-input': {
                   fontFamily: "'Poppins', sans-serif",
-                  color: muiTheme.palette.text.primary,
+                  color: muiTheme?.palette?.text?.primary,
                 },
               }}
               disabled={loading || googleLoading}
@@ -538,9 +545,9 @@ const Login = () => {
                     checked={rememberMe}
                     onChange={(e) => setRememberMe(e.target.checked)}
                     sx={{
-                      color: muiTheme.palette.text.secondary,
+                      color: muiTheme?.palette?.text?.secondary,
                       '&.Mui-checked': {
-                        color: muiTheme.palette.secondary.main,
+                        color: greenLightColor, // Updated checked color
                       },
                     }}
                     disabled={loading || googleLoading}
@@ -550,7 +557,7 @@ const Login = () => {
                 sx={{
                   '& .MuiTypography-root': {
                     fontFamily: "'Poppins', sans-serif",
-                    color: muiTheme.palette.text.secondary,
+                    color: muiTheme?.palette?.text?.secondary,
                   },
                 }}
               />
@@ -560,8 +567,8 @@ const Login = () => {
                 onClick={handleForgotPasswordClick}
                 sx={{
                   fontFamily: "'Poppins', sans-serif",
-                  color: muiTheme.palette.primary.main,
-                  '&:hover': { color: muiTheme.palette.secondary.main },
+                  color: muiTheme?.palette?.primary?.main,
+                  '&:hover': { color: greenLightColor }, // Updated hover color
                 }}
               >
                 Forgot Password?
@@ -602,7 +609,7 @@ const Login = () => {
               )}
             </Button>
           </form>
-          <Divider sx={{ my: 2, color: muiTheme.palette.text.secondary, fontFamily: "'Poppins', sans-serif" }}>
+          <Divider sx={{ my: 2, color: muiTheme?.palette?.text?.secondary, fontFamily: "'Poppins', sans-serif" }}>
             OR
           </Divider>
           <Button
@@ -613,16 +620,16 @@ const Login = () => {
               mt: 2,
               textTransform: 'none',
               fontSize: '16px',
-              color: muiTheme.palette.primary.main,
-              borderColor: muiTheme.palette.border.main,
-              background: muiTheme.palette.background.listItem,
+              color: muiTheme?.palette?.primary?.main,
+              borderColor: muiTheme?.palette?.border?.main,
+              background: muiTheme?.palette?.background?.listItem,
               borderRadius: '8px',
               py: 1.5,
               transition: 'all 0.3s',
               '&:hover': {
-                borderColor: muiTheme.palette.secondary.main,
-                color: muiTheme.palette.secondary.main,
-                background: isDarkMode ? 'rgba(255, 255, 255, 0.15)' : 'rgba(255, 255, 255, 0.3)',
+                borderColor: greenLightColor, // Updated hover border color
+                color: greenLightColor, // Updated hover text color
+                background: isDarkMode ? 'rgba(255, 255, 255, 0.15)' : greenLightHoverBackground, // Updated hover background
               },
               fontFamily: "'Poppins', sans-serif",
             }}
@@ -642,7 +649,7 @@ const Login = () => {
             align="center"
             sx={{
               mt: 3,
-              color: muiTheme.palette.text.secondary,
+              color: muiTheme?.palette?.text?.secondary,
               fontFamily: "'Poppins', sans-serif",
             }}
           >
@@ -653,12 +660,12 @@ const Login = () => {
               onClick={handleSignupClick}
               sx={{
                 fontFamily: "'Poppins', sans-serif",
-                color: muiTheme.palette.primary.main,
+                color: muiTheme?.palette?.primary?.main,
                 fontWeight: 'bold',
                 position: 'relative',
                 textDecoration: 'none',
                 '&:hover': {
-                  color: muiTheme.palette.secondary.main,
+                  color: greenLightColor, // Updated hover color
                   '&:after': {
                     animation: `${underline} 0.3s forwards`,
                   },
@@ -670,7 +677,7 @@ const Login = () => {
                   left: 0,
                   width: 0,
                   height: '2px',
-                  backgroundColor: muiTheme.palette.secondary.main,
+                  backgroundColor: greenLightColor, // Updated underline color
                   transition: 'width 0.3s',
                 },
                 '&:active': {

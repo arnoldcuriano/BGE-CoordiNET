@@ -1,14 +1,14 @@
-import React, { useContext } from 'react';
+import React from 'react';
 import { Box, Typography, Button } from '@mui/material';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { ThemeContext } from '../context/ThemeContext';
+import { useTheme } from '../context/ThemeContext';
 
 const NoAccess = () => {
   const navigate = useNavigate();
-  const { handleLogout } = useAuth();
   const { state } = useLocation();
-  const { isDarkMode } = useContext(ThemeContext);
+  const { handleLogout } = useAuth();
+  const { isDarkMode } = useTheme(); // Removed unused muiTheme
 
   return (
     <Box

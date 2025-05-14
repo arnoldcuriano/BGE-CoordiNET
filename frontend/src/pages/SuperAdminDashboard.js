@@ -4,7 +4,6 @@ import {
   Box,
   Toolbar,
   Typography,
-  useTheme as useMuiTheme,
   Button,
   CircularProgress,
   Snackbar,
@@ -26,6 +25,7 @@ import {
   MenuItem,
   Tooltip,
   Fade,
+  keyframes,
 } from '@mui/material';
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
@@ -34,11 +34,22 @@ import CancelIcon from '@mui/icons-material/Cancel';
 import Layout from '../components/Layout';
 import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
-import { useTheme } from '../hooks/useTheme';
+import { useTheme } from '../context/ThemeContext'
+
+// Define animations (same as Login.js)
+const fadeIn = keyframes`
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+`;
 
 const SuperAdminDashboard = () => {
-  const muiTheme = useMuiTheme();
-  const { isDarkMode } = useTheme();
+  const { isDarkMode, muiTheme } = useTheme();
   const navigate = useNavigate();
   const { authState } = useAuth();
 
@@ -79,6 +90,11 @@ const SuperAdminDashboard = () => {
         profilePicture: authState.profilePicture,
       }
     : null;
+
+  // Log theme changes for debugging
+  console.log('SuperAdminDashboard: isDarkMode:', isDarkMode);
+  console.log('SuperAdminDashboard: muiTheme text.primary:', muiTheme.palette.text.primary);
+  console.log('SuperAdminDashboard: muiTheme text.secondary:', muiTheme.palette.text.secondary);
 
   useEffect(() => {
     if (!authState.isAuthenticated || authState.userRole !== 'superadmin') {
@@ -121,7 +137,6 @@ const SuperAdminDashboard = () => {
 
     fetchData();
   }, [authState, navigate]);
-
 
   // Sorting and filtering logic
   const sortData = (data, sortField, sortOrder, getValue) => {
@@ -556,947 +571,1099 @@ const SuperAdminDashboard = () => {
   return (
     <Layout user={user}>
       <Box
+        key={isDarkMode ? 'dark' : 'light'} // Force re-render on theme change
         sx={{
           minHeight: '100vh',
-          background: isDarkMode
-            ? 'linear-gradient(135deg, #1a1a2e 0%, #16213e 100%)'
-            : 'linear-gradient(135deg, #e0f7fa 0%, #b3e5fc 100%)',
-          p: 2,
+          background: muiTheme.custom.gradients.backgroundDefault,
+          p: { xs: 2, sm: 3, md: 4 },
+          position: 'relative',
+          overflow: 'hidden',
+          animation: `${fadeIn} 0.8s ease-out`,
         }}
       >
-        <Toolbar />
-        <Typography
-          variant="h4"
-          gutterBottom
+        {/* Subtle Gradient Overlay */}
+        <Box
           sx={{
-            fontWeight: 'bold',
-            fontFamily: '"Poppins", sans-serif',
-            color: isDarkMode ? '#ffffff' : '#1976d2',
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            width: '100%',
+            height: '100%',
+            background: isDarkMode
+              ? 'radial-gradient(circle at 30% 30%, rgba(66, 133, 244, 0.2) 0%, transparent 70%)'
+              : 'radial-gradient(circle at 30% 30%, rgba(52, 168, 83, 0.2) 0%, transparent 70%)',
+            zIndex: 0,
+          }}
+        />
+        {/* Main Content */}
+        <Box
+          sx={{
+            position: 'relative',
+            zIndex: 1,
           }}
         >
-          Super Admin Dashboard
-        </Typography>
-        <Box sx={{ display: 'flex', gap: 3, flexWrap: 'wrap', mb: 4 }}>
-          <Box
+          <Toolbar />
+          <Typography
+            variant="h4"
+            gutterBottom
             sx={{
-              p: 3,
-              borderRadius: 2,
-              background: isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(255, 255, 255, 0.9)',
-              backdropFilter: 'blur(10px)',
-              boxShadow: isDarkMode
-                ? '0 8px 32px rgba(0, 0, 0, 0.5)'
-                : '0 8px 32px rgba(0, 0, 0, 0.1)',
-              flex: '1 1 300px',
-              border: isDarkMode
-                ? '1px solid rgba(255, 255, 255, 0.1)'
-                : '1px solid rgba(0, 0, 0, 0.1)',
-              transition: 'transform 0.3s ease',
-              '&:hover': {
-                transform: 'translateY(-5px)',
-              },
+              fontWeight: 'bold',
+              fontFamily: muiTheme.typography.fontFamily,
+              color: muiTheme.palette.primary.main,
             }}
           >
-            <Typography variant="h6" sx={{ fontFamily: '"Poppins", sans-serif', color: isDarkMode ? '#cccccc' : '#666666' }}>
-              Total Members
-            </Typography>
-            <Typography variant="h4" sx={{ mt: 1, color: muiTheme.palette.primary.main, fontFamily: '"Poppins", sans-serif' }}>
-              {approvedMembers.length}
-            </Typography>
-          </Box>
-          <Box
-            sx={{
-              p: 3,
-              borderRadius: 2,
-              background: isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(255, 255, 255, 0.9)',
-              backdropFilter: 'blur(10px)',
-              boxShadow: isDarkMode
-                ? '0 8px 32px rgba(0, 0, 0, 0.5)'
-                : '0 8px 32px rgba(0, 0, 0, 0.1)',
-              flex: '1 1 300px',
-              border: isDarkMode
-                ? '1px solid rgba(255, 255, 255, 0.1)'
-                : '1px solid rgba(0, 0, 0, 0.1)',
-              transition: 'transform 0.3s ease',
-              '&:hover': {
-                transform: 'translateY(-5px)',
-              },
-            }}
-          >
-            <Typography variant="h6" sx={{ fontFamily: '"Poppins", sans-serif', color: isDarkMode ? '#cccccc' : '#666666' }}>
-              Pending Approvals
-            </Typography>
-            <Typography variant="h4" sx={{ mt: 1, color: muiTheme.palette.primary.main, fontFamily: '"Poppins", sans-serif' }}>
-              {pendingMembers.length}
-            </Typography>
-          </Box>
-          <Box
-            sx={{
-              p: 3,
-              borderRadius: 2,
-              background: isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(255, 255, 255, 0.9)',
-              backdropFilter: 'blur(10px)',
-              boxShadow: isDarkMode
-                ? '0 8px 32px rgba(0, 0, 0, 0.5)'
-                : '0 8px 32px rgba(0, 0, 0, 0.1)',
-              flex: '1 1 300px',
-              border: isDarkMode
-                ? '1px solid rgba(255, 255, 255, 0.1)'
-                : '1px solid rgba(0, 0, 0, 0.1)',
-              transition: 'transform 0.3s ease',
-              '&:hover': {
-                transform: 'translateY(-5px)',
-              },
-            }}
-          >
-            <Typography variant="h6" sx={{ fontFamily: '"Poppins", sans-serif', color: isDarkMode ? '#cccccc' : '#666666' }}>
-              Recent Activity
-            </Typography>
-            <Typography variant="body1" sx={{ mt: 1, fontFamily: '"Poppins", sans-serif', color: isDarkMode ? '#ffffff' : '#333333' }}>
-              Last login: 5 minutes ago
-            </Typography>
-          </Box>
-        </Box>
-        <Typography
-          variant="h5"
-          gutterBottom
-          sx={{
-            fontWeight: 'bold',
-            mt: 4,
-            fontFamily: '"Poppins", sans-serif',
-            color: isDarkMode ? '#ffffff' : '#1976d2',
-          }}
-        >
-          Pending Member Approvals
-        </Typography>
-        {pendingMembers.length > 0 ? (
-          <>
-            <Box sx={{ mb: 2, display: 'flex', gap: 2, alignItems: 'center' }}>
-              <TextField
-                label="Search Pending Members"
-                variant="outlined"
-                value={pendingSearch}
-                onChange={(e) => setPendingSearch(e.target.value)}
-                sx={{ flex: 1 }}
-              />
-              <Tooltip title="Approve selected members">
-                <Button
-                  variant="contained"
-                  color="primary"
-                  onClick={handleBulkApprove}
-                  disabled={selectedPending.length === 0 || bulkLoading}
-                  sx={{
-                    fontFamily: '"Poppins", sans-serif',
-                    borderRadius: '8px',
-                    transition: 'all 0.3s ease',
-                    '&:hover': { transform: 'scale(1.05)', backgroundColor: muiTheme.palette.primary.dark },
-                  }}
-                >
-                  {bulkLoading ? <CircularProgress size={24} color="inherit" /> : `Approve Selected (${selectedPending.length})`}
-                </Button>
-              </Tooltip>
-              <Tooltip title="Reject selected members">
-                <Button
-                  variant="contained"
-                  color="error"
-                  onClick={handleBulkReject}
-                  disabled={selectedPending.length === 0 || bulkLoading}
-                  sx={{
-                    fontFamily: '"Poppins", sans-serif',
-                    borderRadius: '8px',
-                    transition: 'all 0.3s ease',
-                    '&:hover': { transform: 'scale(1.05)', backgroundColor: muiTheme.palette.error.dark },
-                  }}
-                >
-                  {bulkLoading ? <CircularProgress size={24} color="inherit" /> : `Reject Selected (${selectedPending.length})`}
-                </Button>
-              </Tooltip>
-            </Box>
-            <Box sx={{ position: 'relative' }}>
-              {bulkLoading && (
-                <Box
-                  sx={{
-                    position: 'absolute',
-                    top: 0,
-                    left: 0,
-                    right: 0,
-                    bottom: 0,
-                    background: isDarkMode ? 'rgba(0, 0, 0, 0.5)' : 'rgba(255, 255, 255, 0.5)',
-                    display: 'flex',
-                    justifyContent: 'center',
-                    alignItems: 'center',
-                    zIndex: 1,
-                    borderRadius: '12px',
-                  }}
-                >
-                  <CircularProgress />
-                </Box>
-              )}
-              <TableContainer
-                component={Paper}
+            Super Admin Dashboard
+          </Typography>
+          <Box sx={{ display: 'flex', gap: 3, flexWrap: 'wrap', mb: 4 }}>
+            <Box
+              sx={{
+                p: 3,
+                borderRadius: 2,
+                background: isDarkMode ? 'rgba(255, 255, 255, 0.05)' : 'rgba(255, 255, 255, 0.1)',
+                backdropFilter: 'blur(10px)',
+                boxShadow: muiTheme.custom.shadows.paper,
+                border: `1px solid ${muiTheme.palette.border.main}`,
+                flex: '1 1 300px',
+                transition: 'transform 0.3s ease',
+                '&:hover': {
+                  transform: 'translateY(-5px)',
+                },
+              }}
+            >
+              <Typography
+                variant="h6"
                 sx={{
-                  background: isDarkMode ? 'rgba(255, 255, 255, 0.05)' : 'rgba(255, 255, 255, 0.8)',
-                  backdropFilter: 'blur(5px)',
-                  border: 'none',
-                  borderRadius: '12px',
-                  boxShadow: isDarkMode
-                    ? '0 8px 32px rgba(0, 0, 0, 0.5)'
-                    : '0 8px 32px rgba(0, 0, 0, 0.1)',
+                  fontFamily: muiTheme.typography.fontFamily,
+                  color: muiTheme.palette.text.secondary,
                 }}
               >
-                <Table sx={{ minWidth: 650 }} aria-label="pending members table">
-                  <TableHead>
-                    <TableRow>
-                      <TableCell
-                        sx={{
-                          fontFamily: '"Poppins", sans-serif',
-                          background: isDarkMode
-                            ? 'linear-gradient(90deg, rgba(26, 26, 46, 0.9) 0%, rgba(22, 33, 62, 0.9) 100%)'
-                            : 'linear-gradient(90deg, rgba(224, 247, 250, 0.9) 0%, rgba(179, 229, 252, 0.9) 100%)',
-                          color: isDarkMode ? '#ffffff' : '#1976d2',
-                          fontWeight: 'bold',
-                        }}
-                      >
-                        <Checkbox
-                          checked={selectedPending.length === filteredPendingMembers.length && filteredPendingMembers.length > 0}
-                          onChange={handleSelectAllPending}
+                Total Members
+              </Typography>
+              <Typography
+                variant="h4"
+                sx={{
+                  mt: 1,
+                  color: muiTheme.palette.primary.main,
+                  fontFamily: muiTheme.typography.fontFamily,
+                }}
+              >
+                {approvedMembers.length}
+              </Typography>
+            </Box>
+            <Box
+              sx={{
+                p: 3,
+                borderRadius: 2,
+                background: isDarkMode ? 'rgba(255, 255, 255, 0.05)' : 'rgba(255, 255, 255, 0.1)',
+                backdropFilter: 'blur(10px)',
+                boxShadow: muiTheme.custom.shadows.paper,
+                border: `1px solid ${muiTheme.palette.border.main}`,
+                flex: '1 1 300px',
+                transition: 'transform 0.3s ease',
+                '&:hover': {
+                  transform: 'translateY(-5px)',
+                },
+              }}
+            >
+              <Typography
+                variant="h6"
+                sx={{
+                  fontFamily: muiTheme.typography.fontFamily,
+                  color: muiTheme.palette.text.secondary,
+                }}
+              >
+                Pending Approvals
+              </Typography>
+              <Typography
+                variant="h4"
+                sx={{
+                  mt: 1,
+                  color: muiTheme.palette.primary.main,
+                  fontFamily: muiTheme.typography.fontFamily,
+                }}
+              >
+                {pendingMembers.length}
+              </Typography>
+            </Box>
+            <Box
+              sx={{
+                p: 3,
+                borderRadius: 2,
+                background: isDarkMode ? 'rgba(255, 255, 255, 0.05)' : 'rgba(255, 255, 255, 0.1)',
+                backdropFilter: 'blur(10px)',
+                boxShadow: muiTheme.custom.shadows.paper,
+                border: `1px solid ${muiTheme.palette.border.main}`,
+                flex: '1 1 300px',
+                transition: 'transform 0.3s ease',
+                '&:hover': {
+                  transform: 'translateY(-5px)',
+                },
+              }}
+            >
+              <Typography
+                variant="h6"
+                sx={{
+                  fontFamily: muiTheme.typography.fontFamily,
+                  color: muiTheme.palette.text.secondary,
+                }}
+              >
+                Recent Activity
+              </Typography>
+              <Typography
+                variant="body1"
+                sx={{
+                  mt: 1,
+                  fontFamily: muiTheme.typography.fontFamily,
+                  color: muiTheme.palette.text.primary,
+                }}
+              >
+                Last login: 5 minutes ago
+              </Typography>
+            </Box>
+          </Box>
+          <Typography
+            variant="h5"
+            gutterBottom
+            sx={{
+              fontWeight: 'bold',
+              mt: 4,
+              fontFamily: muiTheme.typography.fontFamily,
+              color: muiTheme.palette.primary.main,
+            }}
+          >
+            Pending Member Approvals
+          </Typography>
+          {pendingMembers.length > 0 ? (
+            <>
+              <Box sx={{ mb: 2, display: 'flex', gap: 2, alignItems: 'center', flexWrap: 'wrap' }}>
+                <TextField
+                  label="Search Pending Members"
+                  variant="outlined"
+                  value={pendingSearch}
+                  onChange={(e) => setPendingSearch(e.target.value)}
+                  sx={{
+                    flex: 1,
+                    '& .MuiOutlinedInput-root': {
+                      borderRadius: '8px',
+                      background: muiTheme.palette.background.listItem,
+                      transition: 'all 0.3s ease',
+                      '& fieldset': {
+                        borderColor: muiTheme.palette.border.main,
+                      },
+                      '&:hover fieldset': {
+                        borderColor: muiTheme.palette.secondary.main,
+                      },
+                      '&:hover': {
+                        transform: 'translateY(-2px)',
+                        boxShadow: muiTheme.custom?.shadow?.listItem,
+                      },
+                      '&.Mui-focused fieldset': {
+                        borderColor: muiTheme.palette.secondary.main,
+                        boxShadow: `0 0 8px ${muiTheme.palette.secondary.main}33`,
+                      },
+                      '&.Mui-focused': {
+                        transform: 'translateY(-2px)',
+                        boxShadow: muiTheme.custom?.shadow?.listItem,
+                      },
+                    },
+                    '& .MuiInputLabel-root': {
+                      fontFamily: muiTheme.typography.fontFamily,
+                      color: muiTheme.palette.text.secondary,
+                    },
+                    '& .MuiInputBase-input': {
+                      fontFamily: muiTheme.typography.fontFamily,
+                      color: muiTheme.palette.text.primary,
+                    },
+                  }}
+                />
+                <Tooltip title="Approve selected members">
+                  <Button
+                    variant="contained"
+                    color="primary"
+                    onClick={handleBulkApprove}
+                    disabled={selectedPending.length === 0 || bulkLoading}
+                    sx={{
+                      fontFamily: muiTheme.typography.fontFamily,
+                      borderRadius: '8px',
+                      transition: 'all 0.3s ease',
+                      background: 'linear-gradient(90deg, #4285F4, #34A853)',
+                      color: '#ffffff',
+                      '&:hover': {
+                        transform: 'scale(1.05)',
+                        background: 'linear-gradient(90deg, #34A853, #4285F4)',
+                        boxShadow: muiTheme.custom.shadows.buttonHover,
+                      },
+                      '&:disabled': {
+                        background: 'linear-gradient(90deg, #4285F4, #34A853)',
+                        opacity: 0.6,
+                      },
+                    }}
+                  >
+                    {bulkLoading ? <CircularProgress size={24} color="inherit" /> : `Approve Selected (${selectedPending.length})`}
+                  </Button>
+                </Tooltip>
+                <Tooltip title="Reject selected members">
+                  <Button
+                    variant="contained"
+                    color="error"
+                    onClick={handleBulkReject}
+                    disabled={selectedPending.length === 0 || bulkLoading}
+                    sx={{
+                      fontFamily: muiTheme.typography.fontFamily,
+                      borderRadius: '8px',
+                      transition: 'all 0.3s ease',
+                      '&:hover': {
+                        transform: 'scale(1.05)',
+                        backgroundColor: muiTheme.palette.error.dark,
+                        boxShadow: muiTheme.custom.shadows.buttonHover,
+                      },
+                    }}
+                  >
+                    {bulkLoading ? <CircularProgress size={24} color="inherit" /> : `Reject Selected (${selectedPending.length})`}
+                  </Button>
+                </Tooltip>
+              </Box>
+              <Box sx={{ position: 'relative' }}>
+                {bulkLoading && (
+                  <Box
+                    sx={{
+                      position: 'absolute',
+                      top: 0,
+                      left: 0,
+                      right: 0,
+                      bottom: 0,
+                      background: isDarkMode ? 'rgba(0, 0, 0, 0.5)' : 'rgba(255, 255, 255, 0.5)',
+                      display: 'flex',
+                      justifyContent: 'center',
+                      alignItems: 'center',
+                      zIndex: 1,
+                      borderRadius: '12px',
+                    }}
+                  >
+                    <CircularProgress />
+                  </Box>
+                )}
+                <TableContainer
+                  component={Paper}
+                  sx={{
+                    background: isDarkMode ? 'rgba(255, 255, 255, 0.05)' : 'rgba(255, 255, 255, 0.1)',
+                    backdropFilter: 'blur(10px)',
+                    border: `1px solid ${muiTheme.palette.border.main}`,
+                    borderRadius: '12px',
+                    boxShadow: muiTheme.custom.shadows.paper,
+                  }}
+                >
+                  <Table sx={{ minWidth: 650 }} aria-label="pending members table">
+                    <TableHead>
+                      <TableRow>
+                        <TableCell
                           sx={{
-                            color: isDarkMode ? '#ffffff' : '#1976d2',
-                            '&.Mui-checked': { color: muiTheme.palette.secondary.main },
+                            fontFamily: muiTheme.typography.fontFamily,
+                            background: muiTheme.custom.gradients.listItem,
+                            color: muiTheme.palette.primary.main,
+                            fontWeight: 'bold',
                           }}
-                        />
-                      </TableCell>
-                      <TableCell
-                        sx={{
-                          fontFamily: '"Poppins", sans-serif',
-                          background: isDarkMode
-                            ? 'linear-gradient(90deg, rgba(26, 26, 46, 0.9) 0%, rgba(22, 33, 62, 0.9) 100%)'
-                            : 'linear-gradient(90deg, rgba(224, 247, 250, 0.9) 0%, rgba(179, 229, 252, 0.9) 100%)',
-                          color: isDarkMode ? '#ffffff' : '#1976d2',
-                          fontWeight: 'bold',
-                        }}
-                      >
-                        <TableSortLabel
-                          active={pendingSortField === 'name'}
-                          direction={pendingSortOrder}
-                          onClick={() => handlePendingSort('name')}
-                          sx={{ color: isDarkMode ? '#ffffff' : '#1976d2' }}
                         >
-                          Name
-                        </TableSortLabel>
-                      </TableCell>
-                      <TableCell
-                        sx={{
-                          fontFamily: '"Poppins", sans-serif',
-                          background: isDarkMode
-                            ? 'linear-gradient(90deg, rgba(26, 26, 46, 0.9) 0%, rgba(22, 33, 62, 0.9) 100%)'
-                            : 'linear-gradient(90deg, rgba(224, 247, 250, 0.9) 0%, rgba(179, 229, 252, 0.9) 100%)',
-                          color: isDarkMode ? '#ffffff' : '#1976d2',
-                          fontWeight: 'bold',
-                        }}
-                      >
-                        <TableSortLabel
-                          active={pendingSortField === 'email'}
-                          direction={pendingSortOrder}
-                          onClick={() => handlePendingSort('email')}
-                          sx={{ color: isDarkMode ? '#ffffff' : '#1976d2' }}
-                        >
-                          Email
-                        </TableSortLabel>
-                      </TableCell>
-                      <TableCell
-                        sx={{
-                          fontFamily: '"Poppins", sans-serif',
-                          background: isDarkMode
-                            ? 'linear-gradient(90deg, rgba(26, 26, 46, 0.9) 0%, rgba(22, 33, 62, 0.9) 100%)'
-                            : 'linear-gradient(90deg, rgba(224, 247, 250, 0.9) 0%, rgba(179, 229, 252, 0.9) 100%)',
-                          color: isDarkMode ? '#ffffff' : '#1976d2',
-                          fontWeight: 'bold',
-                        }}
-                      >
-                        <TableSortLabel
-                          active={pendingSortField === 'createdAt'}
-                          direction={pendingSortOrder}
-                          onClick={() => handlePendingSort('createdAt')}
-                          sx={{ color: isDarkMode ? '#ffffff' : '#1976d2' }}
-                        >
-                          Created At
-                        </TableSortLabel>
-                      </TableCell>
-                      <TableCell
-                        sx={{
-                          fontFamily: '"Poppins", sans-serif',
-                          background: isDarkMode
-                            ? 'linear-gradient(90deg, rgba(26, 26, 46, 0.9) 0%, rgba(22, 33, 62, 0.9) 100%)'
-                            : 'linear-gradient(90deg, rgba(224, 247, 250, 0.9) 0%, rgba(179, 229, 252, 0.9) 100%)',
-                          color: isDarkMode ? '#ffffff' : '#1976d2',
-                          fontWeight: 'bold',
-                        }}
-                      >
-                        Actions
-                      </TableCell>
-                    </TableRow>
-                  </TableHead>
-                  <TableBody>
-                    {filteredPendingMembers
-                      .slice(pendingPage * pendingRowsPerPage, pendingPage * pendingRowsPerPage + pendingRowsPerPage)
-                      .map((member, index) => (
-                        <TableRow
-                          key={member._id}
+                          <Checkbox
+                            checked={selectedPending.length === filteredPendingMembers.length && filteredPendingMembers.length > 0}
+                            onChange={handleSelectAllPending}
+                            sx={{
+                              color: muiTheme.palette.text.primary,
+                              '&.Mui-checked': { color: muiTheme.palette.secondary.main },
+                            }}
+                          />
+                        </TableCell>
+                        <TableCell
                           sx={{
-                            '&:hover': { backgroundColor: isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.05)' },
-                            backgroundColor: index % 2 === 0 ? 'transparent' : isDarkMode ? 'rgba(255, 255, 255, 0.02)' : 'rgba(0, 0, 0, 0.02)',
+                            fontFamily: muiTheme.typography.fontFamily,
+                            background: muiTheme.custom.gradients.listItem,
+                            color: muiTheme.palette.primary.main,
+                            fontWeight: 'bold',
                           }}
                         >
-                          <TableCell sx={{ fontFamily: '"Poppins", sans-serif', color: isDarkMode ? '#ffffff' : '#333333', py: 1.5 }}>
-                            <Checkbox
-                              checked={selectedPending.includes(member._id)}
-                              onChange={() => handleSelectPending(member._id)}
-                              sx={{
-                                color: isDarkMode ? '#ffffff' : '#1976d2',
-                                '&.Mui-checked': { color: muiTheme.palette.secondary.main },
-                              }}
-                            />
-                          </TableCell>
-                          <TableCell sx={{ fontFamily: '"Poppins", sans-serif', color: isDarkMode ? '#ffffff' : '#333333', py: 1.5 }}>
-                            {`${member.firstName || ''} ${member.lastName || ''}`.trim() || 'Unnamed'}
-                          </TableCell>
-                          <TableCell sx={{ fontFamily: '"Poppins", sans-serif', color: isDarkMode ? '#ffffff' : '#333333', py: 1.5 }}>
-                            {member.email || 'N/A'}
-                          </TableCell>
-                          <TableCell sx={{ fontFamily: '"Poppins", sans-serif', color: isDarkMode ? '#ffffff' : '#333333', py: 1.5 }}>
-                            {member.createdAt ? new Date(member.createdAt).toLocaleDateString() : 'N/A'}
-                          </TableCell>
-                          <TableCell sx={{ fontFamily: '"Poppins", sans-serif', py: 1.5 }}>
-                            <Select
-                              value={selectedRole}
-                              onChange={(e) => setSelectedRole(e.target.value)}
-                              size="small"
-                              sx={{
-                                mr: 1,
-                                color: isDarkMode ? '#ffffff' : '#1976d2',
-                                background: isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(255, 255, 255, 0.9)',
-                                border: '1px solid',
-                                borderImage: 'linear-gradient(90deg, #4285F4, #34A853) 1',
-                                borderRadius: '8px',
-                                fontFamily: '"Poppins", sans-serif',
-                                '&:hover': {
-                                  background: isDarkMode ? 'rgba(255, 255, 255, 0.2)' : 'rgba(255, 255, 255, 0.7)',
-                                  borderImage: 'linear-gradient(90deg, #34A853, #4285F4) 1',
-                                },
-                                '& .MuiSelect-icon': {
-                                  color: isDarkMode ? '#ffffff' : '#1976d2',
-                                },
-                              }}
-                            >
-                              <MenuItem value="viewer">Viewer</MenuItem>
-                              <MenuItem value="admin">Admin</MenuItem>
-                              <MenuItem value="superadmin">Superadmin</MenuItem>
-                            </Select>
-                            <Tooltip title="Approve this user">
-                              <Button
-                                variant="contained"
-                                color="primary"
-                                startIcon={<CheckCircleIcon />}
-                                onClick={() =>
-                                  handleOpenApproveConfirm(
-                                    member._id,
-                                    `${member.firstName || ''} ${member.lastName || ''}`.trim() || 'Unnamed',
-                                    selectedRole
-                                  )
-                                }
-                                disabled={actionLoading[member._id] || bulkLoading}
+                          <TableSortLabel
+                            active={pendingSortField === 'name'}
+                            direction={pendingSortOrder}
+                            onClick={() => handlePendingSort('name')}
+                            sx={{ color: muiTheme.palette.primary.main }}
+                          >
+                            Name
+                          </TableSortLabel>
+                        </TableCell>
+                        <TableCell
+                          sx={{
+                            fontFamily: muiTheme.typography.fontFamily,
+                            background: muiTheme.custom.gradients.listItem,
+                            color: muiTheme.palette.primary.main,
+                            fontWeight: 'bold',
+                          }}
+                        >
+                          <TableSortLabel
+                            active={pendingSortField === 'email'}
+                            direction={pendingSortOrder}
+                            onClick={() => handlePendingSort('email')}
+                            sx={{ color: muiTheme.palette.primary.main }}
+                          >
+                            Email
+                          </TableSortLabel>
+                        </TableCell>
+                        <TableCell
+                          sx={{
+                            fontFamily: muiTheme.typography.fontFamily,
+                            background: muiTheme.custom.gradients.listItem,
+                            color: muiTheme.palette.primary.main,
+                            fontWeight: 'bold',
+                          }}
+                        >
+                          <TableSortLabel
+                            active={pendingSortField === 'createdAt'}
+                            direction={pendingSortOrder}
+                            onClick={() => handlePendingSort('createdAt')}
+                            sx={{ color: muiTheme.palette.primary.main }}
+                          >
+                            Created At
+                          </TableSortLabel>
+                        </TableCell>
+                        <TableCell
+                          sx={{
+                            fontFamily: muiTheme.typography.fontFamily,
+                            background: muiTheme.custom.gradients.listItem,
+                            color: muiTheme.palette.primary.main,
+                            fontWeight: 'bold',
+                          }}
+                        >
+                          Actions
+                        </TableCell>
+                      </TableRow>
+                    </TableHead>
+                    <TableBody>
+                      {filteredPendingMembers
+                        .slice(pendingPage * pendingRowsPerPage, pendingPage * pendingRowsPerPage + pendingRowsPerPage)
+                        .map((member, index) => (
+                          <TableRow
+                            key={member._id}
+                            sx={{
+                              '&:hover': { backgroundColor: muiTheme.custom.gradients.listItemHover },
+                              backgroundColor: index % 2 === 0 ? 'transparent' : isDarkMode ? 'rgba(255, 255, 255, 0.02)' : 'rgba(0, 0, 0, 0.02)',
+                            }}
+                          >
+                            <TableCell sx={{ fontFamily: muiTheme.typography.fontFamily, color: muiTheme.palette.text.primary, py: 1.5 }}>
+                              <Checkbox
+                                checked={selectedPending.includes(member._id)}
+                                onChange={() => handleSelectPending(member._id)}
+                                sx={{
+                                  color: muiTheme.palette.text.primary,
+                                  '&.Mui-checked': { color: muiTheme.palette.secondary.main },
+                                }}
+                              />
+                            </TableCell>
+                            <TableCell sx={{ fontFamily: muiTheme.typography.fontFamily, color: muiTheme.palette.text.primary, py: 1.5 }}>
+                              {`${member.firstName || ''} ${member.lastName || ''}`.trim() || 'Unnamed'}
+                            </TableCell>
+                            <TableCell sx={{ fontFamily: muiTheme.typography.fontFamily, color: muiTheme.palette.text.primary, py: 1.5 }}>
+                              {member.email || 'N/A'}
+                            </TableCell>
+                            <TableCell sx={{ fontFamily: muiTheme.typography.fontFamily, color: muiTheme.palette.text.primary, py: 1.5 }}>
+                              {member.createdAt ? new Date(member.createdAt).toLocaleDateString() : 'N/A'}
+                            </TableCell>
+                            <TableCell sx={{ fontFamily: muiTheme.typography.fontFamily, py: 1.5 }}>
+                              <Select
+                                value={selectedRole}
+                                onChange={(e) => setSelectedRole(e.target.value)}
+                                size="small"
                                 sx={{
                                   mr: 1,
-                                  fontFamily: '"Poppins", sans-serif',
+                                  color: muiTheme.palette.text.primary,
+                                  background: muiTheme.palette.background.listItem,
+                                  border: `1px solid ${muiTheme.palette.border.main}`,
                                   borderRadius: '8px',
-                                  transition: 'all 0.3s ease',
-                                  '&:hover': { transform: 'scale(1.05)', backgroundColor: muiTheme.palette.primary.dark },
+                                  fontFamily: muiTheme.typography.fontFamily,
+                                  '&:hover': {
+                                    background: muiTheme.custom.gradients.listItemHover,
+                                    borderColor: muiTheme.palette.secondary.main,
+                                  },
+                                  '& .MuiSelect-icon': {
+                                    color: muiTheme.palette.text.primary,
+                                  },
                                 }}
                               >
-                                {actionLoading[member._id] ? <CircularProgress size={24} color="inherit" /> : 'Approve'}
-                              </Button>
-                            </Tooltip>
-                            <Tooltip title="Reject this user">
-                              <Button
-                                variant="contained"
-                                color="error"
-                                startIcon={<CancelIcon />}
-                                onClick={() => handleRejectMember(member._id)}
-                                disabled={actionLoading[member._id] || bulkLoading}
-                                sx={{
-                                  fontFamily: '"Poppins", sans-serif',
-                                  borderRadius: '8px',
-                                  transition: 'all 0.3s ease',
-                                  '&:hover': { transform: 'scale(1.05)', backgroundColor: muiTheme.palette.error.dark },
-                                }}
-                              >
-                                {actionLoading[member._id] ? <CircularProgress size={24} color="inherit" /> : 'Reject'}
-                              </Button>
-                            </Tooltip>
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                  </TableBody>
-                </Table>
-              </TableContainer>
-            </Box>
-            <TablePagination
-              rowsPerPageOptions={[5, 10, 25]}
-              component="div"
-              count={filteredPendingMembers.length}
-              rowsPerPage={pendingRowsPerPage}
-              page={pendingPage}
-              onPageChange={handlePendingChangePage}
-              onRowsPerPageChange={handlePendingChangeRowsPerPage}
-            />
-          </>
-        ) : (
-          <Typography sx={{ p: 2, color: muiTheme.palette.text.secondary, fontFamily: '"Poppins", sans-serif' }}>
-            No pending approvals
-          </Typography>
-        )}
-        <Typography
-          variant="h5"
-          gutterBottom
-          sx={{
-            fontWeight: 'bold',
-            mt: 4,
-            fontFamily: '"Poppins", sans-serif',
-            color: isDarkMode ? '#ffffff' : '#1976d2',
-          }}
-        >
-          Manage Member Access
-        </Typography>
-        {approvedMembers.length > 0 ? (
-          <>
-            <Box sx={{ mb: 2, display: 'flex', gap: 2, alignItems: 'center', flexWrap: 'wrap' }}>
-              <TextField
-                label="Search Approved Members"
-                variant="outlined"
-                value={approvedSearch}
-                onChange={(e) => setApprovedSearch(e.target.value)}
-                sx={{ flex: 1, minWidth: 200 }}
+                                <MenuItem value="viewer">Viewer</MenuItem>
+                                <MenuItem value="admin">Admin</MenuItem>
+                                <MenuItem value="superadmin">Superadmin</MenuItem>
+                              </Select>
+                              <Tooltip title="Approve this user">
+                                <Button
+                                  variant="contained"
+                                  color="primary"
+                                  startIcon={<CheckCircleIcon />}
+                                  onClick={() =>
+                                    handleOpenApproveConfirm(
+                                      member._id,
+                                      `${member.firstName || ''} ${member.lastName || ''}`.trim() || 'Unnamed',
+                                      selectedRole
+                                    )
+                                  }
+                                  disabled={actionLoading[member._id] || bulkLoading}
+                                  sx={{
+                                    mr: 1,
+                                    fontFamily: muiTheme.typography.fontFamily,
+                                    borderRadius: '8px',
+                                    transition: 'all 0.3s ease',
+                                    background: 'linear-gradient(90deg, #4285F4, #34A853)',
+                                    color: '#ffffff',
+                                    '&:hover': {
+                                      transform: 'scale(1.05)',
+                                      background: 'linear-gradient(90deg, #34A853, #4285F4)',
+                                      boxShadow: muiTheme.custom.shadows.buttonHover,
+                                    },
+                                    '&:disabled': {
+                                      background: 'linear-gradient(90deg, #4285F4, #34A853)',
+                                      opacity: 0.6,
+                                    },
+                                  }}
+                                >
+                                  {actionLoading[member._id] ? <CircularProgress size={24} color="inherit" /> : 'Approve'}
+                                </Button>
+                              </Tooltip>
+                              <Tooltip title="Reject this user">
+                                <Button
+                                  variant="contained"
+                                  color="error"
+                                  startIcon={<CancelIcon />}
+                                  onClick={() => handleRejectMember(member._id)}
+                                  disabled={actionLoading[member._id] || bulkLoading}
+                                  sx={{
+                                    fontFamily: muiTheme.typography.fontFamily,
+                                    borderRadius: '8px',
+                                    transition: 'all 0.3s ease',
+                                    '&:hover': {
+                                      transform: 'scale(1.05)',
+                                      backgroundColor: muiTheme.palette.error.dark,
+                                      boxShadow: muiTheme.custom.shadows.buttonHover,
+                                    },
+                                  }}
+                                >
+                                  {actionLoading[member._id] ? <CircularProgress size={24} color="inherit" /> : 'Reject'}
+                                </Button>
+                              </Tooltip>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                    </TableBody>
+                  </Table>
+                </TableContainer>
+              </Box>
+              <TablePagination
+                rowsPerPageOptions={[5, 10, 25]}
+                component="div"
+                count={filteredPendingMembers.length}
+                rowsPerPage={pendingRowsPerPage}
+                page={pendingPage}
+                onPageChange={handlePendingChangePage}
+                onRowsPerPageChange={handlePendingChangeRowsPerPage}
+                sx={{
+                  color: muiTheme.palette.text.primary,
+                  '& .MuiIconButton-root': {
+                    color: muiTheme.palette.text.primary,
+                  },
+                  '& .MuiSelect-icon': {
+                    color: muiTheme.palette.text.primary,
+                  },
+                }}
               />
-              <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
-                {availablePages.map((page) => (
-                  <Box key={page.key} sx={{ display: 'flex', alignItems: 'center' }}>
+            </>
+          ) : (
+            <Typography sx={{ p: 2, color: muiTheme.palette.text.secondary, fontFamily: muiTheme.typography.fontFamily }}>
+              No pending approvals
+            </Typography>
+          )}
+          <Typography
+            variant="h5"
+            gutterBottom
+            sx={{
+              fontWeight: 'bold',
+              mt: 4,
+              fontFamily: muiTheme.typography.fontFamily,
+              color: muiTheme.palette.primary.main,
+            }}
+          >
+            Manage Member Access
+          </Typography>
+          {approvedMembers.length > 0 ? (
+            <>
+              <Box sx={{ mb: 2, display: 'flex', gap: 2, alignItems: 'center', flexWrap: 'wrap' }}>
+                <TextField
+                  label="Search Approved Members"
+                  variant="outlined"
+                  value={approvedSearch}
+                  onChange={(e) => setApprovedSearch(e.target.value)}
+                  sx={{
+                    flex: 1,
+                    minWidth: 200,
+                    '& .MuiOutlinedInput-root': {
+                      borderRadius: '8px',
+                      background: muiTheme.palette.background.listItem,
+                      transition: 'all 0.3s ease',
+                      '& fieldset': {
+                        borderColor: muiTheme.palette.border.main,
+                      },
+                      '&:hover fieldset': {
+                        borderColor: muiTheme.palette.secondary.main,
+                      },
+                      '&:hover': {
+                        transform: 'translateY(-2px)',
+                        boxShadow: muiTheme.custom?.shadow?.listItem,
+                      },
+                      '&.Mui-focused fieldset': {
+                        borderColor: muiTheme.palette.secondary.main,
+                        boxShadow: `0 0 8px ${muiTheme.palette.secondary.main}33`,
+                      },
+                      '&.Mui-focused': {
+                        transform: 'translateY(-2px)',
+                        boxShadow: muiTheme.custom?.shadow?.listItem,
+                      },
+                    },
+                    '& .MuiInputLabel-root': {
+                      fontFamily: muiTheme.typography.fontFamily,
+                      color: muiTheme.palette.text.secondary,
+                    },
+                    '& .MuiInputBase-input': {
+                      fontFamily: muiTheme.typography.fontFamily,
+                      color: muiTheme.palette.text.primary,
+                    },
+                  }}
+                />
+                <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+                  {availablePages.map((page) => (
+                    <Box key={page.key} sx={{ display: 'flex', alignItems: 'center' }}>
+                      <FormControlLabel
+                        control={
+                          <Checkbox
+                            onChange={(e) => handleBulkAccessChange(page.key, e.target.checked)}
+                            disabled={selectedApproved.length === 0 || hasSuperadminSelected || bulkLoading}
+                            sx={{
+                              color: muiTheme.palette.text.primary,
+                              '&.Mui-checked': { color: muiTheme.palette.secondary.main },
+                            }}
+                          />
+                        }
+                        label={`Toggle ${page.label}`}
+                        sx={{
+                          fontFamily: muiTheme.typography.fontFamily,
+                          color: muiTheme.palette.text.primary,
+                          m: 0,
+                        }}
+                      />
+                    </Box>
+                  ))}
+                </Box>
+              </Box>
+              <Box sx={{ position: 'relative' }}>
+                {bulkLoading && (
+                  <Box
+                    sx={{
+                      position: 'absolute',
+                      top: 0,
+                      left: 0,
+                      right: 0,
+                      bottom: 0,
+                      background: isDarkMode ? 'rgba(0, 0, 0, 0.5)' : 'rgba(255, 255, 255, 0.5)',
+                      display: 'flex',
+                      justifyContent: 'center',
+                      alignItems: 'center',
+                      zIndex: 1,
+                      borderRadius: '12px',
+                    }}
+                  >
+                    <CircularProgress />
+                  </Box>
+                )}
+                <TableContainer
+                  component={Paper}
+                  sx={{
+                    background: isDarkMode ? 'rgba(255, 255, 255, 0.05)' : 'rgba(255, 255, 255, 0.1)',
+                    backdropFilter: 'blur(10px)',
+                    border: `1px solid ${muiTheme.palette.border.main}`,
+                    borderRadius: '12px',
+                    boxShadow: muiTheme.custom.shadows.paper,
+                  }}
+                >
+                  <Table sx={{ minWidth: 650 }} aria-label="approved members table">
+                    <TableHead>
+                      <TableRow>
+                        <TableCell
+                          sx={{
+                            fontFamily: muiTheme.typography.fontFamily,
+                            background: muiTheme.custom.gradients.listItem,
+                            color: muiTheme.palette.primary.main,
+                            fontWeight: 'bold',
+                          }}
+                        >
+                          <Checkbox
+                            checked={selectedApproved.length === filteredApprovedMembers.length && filteredApprovedMembers.length > 0}
+                            onChange={handleSelectAllApproved}
+                            sx={{
+                              color: muiTheme.palette.text.primary,
+                              '&.Mui-checked': { color: muiTheme.palette.secondary.main },
+                            }}
+                          />
+                        </TableCell>
+                        <TableCell
+                          sx={{
+                            fontFamily: muiTheme.typography.fontFamily,
+                            background: muiTheme.custom.gradients.listItem,
+                            color: muiTheme.palette.primary.main,
+                            fontWeight: 'bold',
+                          }}
+                        >
+                          <TableSortLabel
+                            active={approvedSortField === 'name'}
+                            direction={approvedSortOrder}
+                            onClick={() => handleApprovedSort('name')}
+                            sx={{ color: muiTheme.palette.primary.main }}
+                          >
+                            Name
+                          </TableSortLabel>
+                        </TableCell>
+                        <TableCell
+                          sx={{
+                            fontFamily: muiTheme.typography.fontFamily,
+                            background: muiTheme.custom.gradients.listItem,
+                            color: muiTheme.palette.primary.main,
+                            fontWeight: 'bold',
+                          }}
+                        >
+                          <TableSortLabel
+                            active={approvedSortField === 'email'}
+                            direction={approvedSortOrder}
+                            onClick={() => handleApprovedSort('email')}
+                            sx={{ color: muiTheme.palette.primary.main }}
+                          >
+                            Email
+                          </TableSortLabel>
+                        </TableCell>
+                        <TableCell
+                          sx={{
+                            fontFamily: muiTheme.typography.fontFamily,
+                            background: muiTheme.custom.gradients.listItem,
+                            color: muiTheme.palette.primary.main,
+                            fontWeight: 'bold',
+                          }}
+                        >
+                          <TableSortLabel
+                            active={approvedSortField === 'role'}
+                            direction={approvedSortOrder}
+                            onClick={() => handleApprovedSort('role')}
+                            sx={{ color: muiTheme.palette.primary.main }}
+                          >
+                            Role
+                          </TableSortLabel>
+                        </TableCell>
+                        <TableCell
+                          sx={{
+                            fontFamily: muiTheme.typography.fontFamily,
+                            background: muiTheme.custom.gradients.listItem,
+                            color: muiTheme.palette.primary.main,
+                            fontWeight: 'bold',
+                          }}
+                        >
+                          Actions
+                        </TableCell>
+                      </TableRow>
+                    </TableHead>
+                    <TableBody>
+                      {filteredApprovedMembers
+                        .slice(approvedPage * approvedRowsPerPage, approvedPage * approvedRowsPerPage + approvedRowsPerPage)
+                        .map((member, index) => (
+                          <TableRow
+                            key={member._id}
+                            sx={{
+                              '&:hover': { backgroundColor: muiTheme.custom.gradients.listItemHover },
+                              backgroundColor: index % 2 === 0 ? 'transparent' : isDarkMode ? 'rgba(255, 255, 255, 0.02)' : 'rgba(0, 0, 0, 0.02)',
+                            }}
+                          >
+                            <TableCell sx={{ fontFamily: muiTheme.typography.fontFamily, color: muiTheme.palette.text.primary, py: 1.5 }}>
+                              <Checkbox
+                                checked={selectedApproved.includes(member._id)}
+                                onChange={() => handleSelectApproved(member._id)}
+                                sx={{
+                                  color: muiTheme.palette.text.primary,
+                                  '&.Mui-checked': { color: muiTheme.palette.secondary.main },
+                                }}
+                              />
+                            </TableCell>
+                            <TableCell sx={{ fontFamily: muiTheme.typography.fontFamily, color: muiTheme.palette.text.primary, py: 1.5 }}>
+                              {`${member.firstName || ''} ${member.lastName || ''}`.trim() || 'Unnamed'}
+                            </TableCell>
+                            <TableCell sx={{ fontFamily: muiTheme.typography.fontFamily, color: muiTheme.palette.text.primary, py: 1.5 }}>
+                              {member.email || 'N/A'}
+                            </TableCell>
+                            <TableCell sx={{ fontFamily: muiTheme.typography.fontFamily, color: muiTheme.palette.text.primary, py: 1.5 }}>
+                              {member.role || 'N/A'}
+                            </TableCell>
+                            <TableCell sx={{ fontFamily: muiTheme.typography.fontFamily, py: 1.5 }}>
+                              <Tooltip title="Edit user access">
+                                <Button
+                                  variant="outlined"
+                                  startIcon={<EditIcon />}
+                                  onClick={() => handleOpenModal(member)}
+                                  sx={{
+                                    fontFamily: muiTheme.typography.fontFamily,
+                                    borderRadius: '8px',
+                                    mr: 1,
+                                    transition: 'all 0.3s ease',
+                                    color: muiTheme.palette.text.primary,
+                                    borderColor: muiTheme.palette.border.main,
+                                    '&:hover': {
+                                      transform: 'scale(1.05)',
+                                      borderColor: muiTheme.palette.primary.main,
+                                      backgroundColor: muiTheme.custom.gradients.listItemHover,
+                                    },
+                                  }}
+                                  disabled={member.role === 'superadmin' || actionLoading[member._id] || bulkLoading}
+                                >
+                                  Edit Access
+                                </Button>
+                              </Tooltip>
+                              <Tooltip title="Delete this user">
+                                <Button
+                                  variant="contained"
+                                  color="error"
+                                  startIcon={<DeleteIcon />}
+                                  onClick={() =>
+                                    handleOpenDeleteConfirm(
+                                      member._id,
+                                      `${member.firstName || ''} ${member.lastName || ''}`.trim() || 'Unnamed'
+                                    )
+                                  }
+                                  sx={{
+                                    fontFamily: muiTheme.typography.fontFamily,
+                                    borderRadius: '8px',
+                                    transition: 'all 0.3s ease',
+                                    color: isDarkMode ? muiTheme.palette.text.primary : '#ffffff',
+                                    '&:hover': {
+                                      transform: 'scale(1.05)',
+                                      backgroundColor: muiTheme.palette.error.dark,
+                                      boxShadow: muiTheme.custom.shadows.buttonHover,
+                                    },
+                                  }}
+                                  disabled={actionLoading[member._id] || bulkLoading}
+                                >
+                                  {actionLoading[member._id] ? <CircularProgress size={24} color="inherit" /> : 'Delete'}
+                                </Button>
+                              </Tooltip>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                    </TableBody>
+                  </Table>
+                </TableContainer>
+              </Box>
+              <TablePagination
+                rowsPerPageOptions={[5, 10, 25]}
+                component="div"
+                count={filteredApprovedMembers.length}
+                rowsPerPage={approvedRowsPerPage}
+                page={approvedPage}
+                onPageChange={handleApprovedChangePage}
+                onRowsPerPageChange={handleApprovedChangeRowsPerPage}
+                sx={{
+                  color: muiTheme.palette.text.primary,
+                  '& .MuiIconButton-root': {
+                    color: muiTheme.palette.text.primary,
+                  },
+                  '& .MuiSelect-icon': {
+                    color: muiTheme.palette.text.primary,
+                  },
+                }}
+              />
+            </>
+          ) : (
+            <Typography sx={{ p: 2, color: muiTheme.palette.text.secondary, fontFamily: muiTheme.typography.fontFamily }}>
+              No approved members
+            </Typography>
+          )}
+          <Modal
+            open={openModal}
+            onClose={handleCloseModal}
+            aria-labelledby="modal-modal-title"
+            aria-describedby="modal-modal-description"
+          >
+            <Fade in={openModal}>
+              <Box
+                sx={{
+                  position: 'absolute',
+                  top: '50%',
+                  left: '50%',
+                  transform: 'translate(-50%, -50%)',
+                  width: 400,
+                  p: 4,
+                  borderRadius: 2,
+                  background: isDarkMode ? 'rgba(30, 30, 50, 0.95)' : 'rgba(255, 255, 255, 0.95)',
+                  boxShadow: muiTheme.custom.shadows.paper,
+                  border: `1px solid ${muiTheme.palette.border.main}`,
+                }}
+              >
+                <Typography
+                  id="modal-modal-title"
+                  variant="h6"
+                  sx={{
+                    mb: 2,
+                    fontFamily: muiTheme.typography.fontFamily,
+                    color: muiTheme.palette.primary.main,
+                  }}
+                >
+                  Edit Access for {selectedMember?.firstName} {selectedMember?.lastName}
+                </Typography>
+                <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2 }}>
+                  {availablePages.map((page) => (
                     <FormControlLabel
+                      key={page.key}
                       control={
                         <Checkbox
-                          onChange={(e) => handleBulkAccessChange(page.key, e.target.checked)}
-                          disabled={selectedApproved.length === 0 || hasSuperadminSelected || bulkLoading}
+                          checked={tempPermissions[page.key] || false}
+                          onChange={(e) => handleAccessChange(page.key, e.target.checked)}
                           sx={{
-                            color: isDarkMode ? '#ffffff' : '#1976d2',
-                            '&.Mui-checked': { color: muiTheme.palette.secondary.main },
+                            color: muiTheme.palette.text.primary,
+                            '&.Mui-checked': {
+                              color: muiTheme.palette.secondary.main,
+                            },
                           }}
                         />
                       }
-                      label={`Toggle ${page.label}`}
+                      label={page.label}
                       sx={{
-                        fontFamily: '"Poppins", sans-serif',
-                        color: isDarkMode ? '#ffffff' : '#333333',
-                        m: 0,
+                        fontFamily: muiTheme.typography.fontFamily,
+                        color: muiTheme.palette.text.primary,
                       }}
                     />
-                  </Box>
-                ))}
-              </Box>
-            </Box>
-            <Box sx={{ position: 'relative' }}>
-              {bulkLoading && (
-                <Box
-                  sx={{
-                    position: 'absolute',
-                    top: 0,
-                    left: 0,
-                    right: 0,
-                    bottom: 0,
-                    background: isDarkMode ? 'rgba(0, 0, 0, 0.5)' : 'rgba(255, 255, 255, 0.5)',
-                    display: 'flex',
-                    justifyContent: 'center',
-                    alignItems: 'center',
-                    zIndex: 1,
-                    borderRadius: '12px',
-                  }}
-                >
-                  <CircularProgress />
+                  ))}
                 </Box>
-              )}
-              <TableContainer
-                component={Paper}
-                sx={{
-                  background: isDarkMode ? 'rgba(255, 255, 255, 0.05)' : 'rgba(255, 255, 255, 0.8)',
-                  backdropFilter: 'blur(5px)',
-                  border: 'none',
-                  borderRadius: '12px',
-                  boxShadow: isDarkMode
-                    ? '0 8px 32px rgba(0, 0, 0, 0.5)'
-                    : '0 8px 32px rgba(0, 0, 0, 0.1)',
-                }}
-              >
-                <Table sx={{ minWidth: 650 }} aria-label="approved members table">
-                  <TableHead>
-                    <TableRow>
-                      <TableCell
-                        sx={{
-                          fontFamily: '"Poppins", sans-serif',
-                          background: isDarkMode
-                            ? 'linear-gradient(90deg, rgba(26, 26, 46, 0.9) 0%, rgba(22, 33, 62, 0.9) 100%)'
-                            : 'linear-gradient(90deg, rgba(224, 247, 250, 0.9) 0%, rgba(179, 229, 252, 0.9) 100%)',
-                          color: isDarkMode ? '#ffffff' : '#1976d2',
-                          fontWeight: 'bold',
-                        }}
-                      >
-                        <Checkbox
-                          checked={selectedApproved.length === filteredApprovedMembers.length && filteredApprovedMembers.length > 0}
-                          onChange={handleSelectAllApproved}
-                          sx={{
-                            color: isDarkMode ? '#ffffff' : '#1976d2',
-                            '&.Mui-checked': { color: muiTheme.palette.secondary.main },
-                          }}
-                        />
-                      </TableCell>
-                      <TableCell
-                        sx={{
-                          fontFamily: '"Poppins", sans-serif',
-                          background: isDarkMode
-                            ? 'linear-gradient(90deg, rgba(26, 26, 46, 0.9) 0%, rgba(22, 33, 62, 0.9) 100%)'
-                            : 'linear-gradient(90deg, rgba(224, 247, 250, 0.9) 0%, rgba(179, 229, 252, 0.9) 100%)',
-                          color: isDarkMode ? '#ffffff' : '#1976d2',
-                          fontWeight: 'bold',
-                        }}
-                      >
-                        <TableSortLabel
-                          active={approvedSortField === 'name'}
-                          direction={approvedSortOrder}
-                          onClick={() => handleApprovedSort('name')}
-                          sx={{ color: isDarkMode ? '#ffffff' : '#1976d2' }}
-                        >
-                          Name
-                        </TableSortLabel>
-                      </TableCell>
-                      <TableCell
-                        sx={{
-                          fontFamily: '"Poppins", sans-serif',
-                          background: isDarkMode
-                            ? 'linear-gradient(90deg, rgba(26, 26, 46, 0.9) 0%, rgba(22, 33, 62, 0.9) 100%)'
-                            : 'linear-gradient(90deg, rgba(224, 247, 250, 0.9) 0%, rgba(179, 229, 252, 0.9) 100%)',
-                          color: isDarkMode ? '#ffffff' : '#1976d2',
-                          fontWeight: 'bold',
-                        }}
-                      >
-                        <TableSortLabel
-                          active={approvedSortField === 'email'}
-                          direction={approvedSortOrder}
-                          onClick={() => handleApprovedSort('email')}
-                          sx={{ color: isDarkMode ? '#ffffff' : '#1976d2' }}
-                        >
-                          Email
-                        </TableSortLabel>
-                      </TableCell>
-                      <TableCell
-                        sx={{
-                          fontFamily: '"Poppins", sans-serif',
-                          background: isDarkMode
-                            ? 'linear-gradient(90deg, rgba(26, 26, 46, 0.9) 0%, rgba(22, 33, 62, 0.9) 100%)'
-                            : 'linear-gradient(90deg, rgba(224, 247, 250, 0.9) 0%, rgba(179, 229, 252, 0.9) 100%)',
-                          color: isDarkMode ? '#ffffff' : '#1976d2',
-                          fontWeight: 'bold',
-                        }}
-                      >
-                        <TableSortLabel
-                          active={approvedSortField === 'role'}
-                          direction={approvedSortOrder}
-                          onClick={() => handleApprovedSort('role')}
-                          sx={{ color: isDarkMode ? '#ffffff' : '#1976d2' }}
-                        >
-                          Role
-                        </TableSortLabel>
-                      </TableCell>
-                      <TableCell
-                        sx={{
-                          fontFamily: '"Poppins", sans-serif',
-                          background: isDarkMode
-                            ? 'linear-gradient(90deg, rgba(26, 26, 46, 0.9) 0%, rgba(22, 33, 62, 0.9) 100%)'
-                            : 'linear-gradient(90deg, rgba(224, 247, 250, 0.9) 0%, rgba(179, 229, 252, 0.9) 100%)',
-                          color: isDarkMode ? '#ffffff' : '#1976d2',
-                          fontWeight: 'bold',
-                        }}
-                      >
-                        Actions
-                      </TableCell>
-                    </TableRow>
-                  </TableHead>
-                  <TableBody>
-                    {filteredApprovedMembers
-                      .slice(approvedPage * approvedRowsPerPage, approvedPage * approvedRowsPerPage + approvedRowsPerPage)
-                      .map((member, index) => (
-                        <TableRow
-                          key={member._id}
-                          sx={{
-                            '&:hover': { backgroundColor: isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.05)' },
-                            backgroundColor: index % 2 === 0 ? 'transparent' : isDarkMode ? 'rgba(255, 255, 255, 0.02)' : 'rgba(0, 0, 0, 0.02)',
-                          }}
-                        >
-                          <TableCell sx={{ fontFamily: '"Poppins", sans-serif', color: isDarkMode ? '#ffffff' : '#333333', py: 1.5 }}>
-                            <Checkbox
-                              checked={selectedApproved.includes(member._id)}
-                              onChange={() => handleSelectApproved(member._id)}
-                              sx={{
-                                color: isDarkMode ? '#ffffff' : '#1976d2',
-                                '&.Mui-checked': { color: muiTheme.palette.secondary.main },
-                              }}
-                            />
-                          </TableCell>
-                          <TableCell sx={{ fontFamily: '"Poppins", sans-serif', color: isDarkMode ? '#ffffff' : '#333333', py: 1.5 }}>
-                            {`${member.firstName || ''} ${member.lastName || ''}`.trim() || 'Unnamed'}
-                          </TableCell>
-                          <TableCell sx={{ fontFamily: '"Poppins", sans-serif', color: isDarkMode ? '#ffffff' : '#333333', py: 1.5 }}>
-                            {member.email || 'N/A'}
-                          </TableCell>
-                          <TableCell sx={{ fontFamily: '"Poppins", sans-serif', color: isDarkMode ? '#ffffff' : '#333333', py: 1.5 }}>
-                            {member.role || 'N/A'}
-                          </TableCell>
-                          <TableCell sx={{ fontFamily: '"Poppins", sans-serif', py: 1.5 }}>
-                            <Tooltip title="Edit user access">
-                              <Button
-                                variant="outlined"
-                                startIcon={<EditIcon />}
-                                onClick={() => handleOpenModal(member)}
-                                sx={{
-                                  fontFamily: '"Poppins", sans-serif',
-                                  borderRadius: '8px',
-                                  mr: 1,
-                                  transition: 'all 0.3s ease',
-                                  '&:hover': { transform: 'scale(1.05)', borderColor: muiTheme.palette.primary.main },
-                                }}
-                                disabled={member.role === 'superadmin' || actionLoading[member._id] || bulkLoading}
-                              >
-                                Edit Access
-                              </Button>
-                            </Tooltip>
-                            <Tooltip title="Delete this user">
-                              <Button
-                                variant="contained"
-                                color="error"
-                                startIcon={<DeleteIcon />}
-                                onClick={() =>
-                                  handleOpenDeleteConfirm(
-                                    member._id,
-                                    `${member.firstName || ''} ${member.lastName || ''}`.trim() || 'Unnamed'
-                                  )
-                                }
-                                sx={{
-                                  fontFamily: '"Poppins", sans-serif',
-                                  borderRadius: '8px',
-                                  transition: 'all 0.3s ease',
-                                  '&:hover': { transform: 'scale(1.05)', backgroundColor: muiTheme.palette.error.dark },
-                                }}
-                                disabled={actionLoading[member._id] || bulkLoading}
-                              >
-                                {actionLoading[member._id] ? <CircularProgress size={24} color="inherit" /> : 'Delete'}
-                              </Button>
-                            </Tooltip>
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                  </TableBody>
-                </Table>
-              </TableContainer>
-            </Box>
-            <TablePagination
-              rowsPerPageOptions={[5, 10, 25]}
-              component="div"
-              count={filteredApprovedMembers.length}
-              rowsPerPage={approvedRowsPerPage}
-              page={approvedPage}
-              onPageChange={handleApprovedChangePage}
-              onRowsPerPageChange={handleApprovedChangeRowsPerPage}
-            />
-          </>
-        ) : (
-          <Typography sx={{ p: 2, color: muiTheme.palette.text.secondary, fontFamily: '"Poppins", sans-serif' }}>
-            No approved members
-          </Typography>
-        )}
-        <Modal
-          open={openModal}
-          onClose={handleCloseModal}
-          aria-labelledby="modal-modal-title"
-          aria-describedby="modal-modal-description"
-        >
-          <Fade in={openModal}>
-            <Box
-              sx={{
-                position: 'absolute',
-                top: '50%',
-                left: '50%',
-                transform: 'translate(-50%, -50%)',
-                width: 400,
-                p: 4,
-                borderRadius: 2,
-                background: isDarkMode
-                  ? 'linear-gradient(135deg, rgba(26, 26, 46, 0.9) 0%, rgba(22, 33, 62, 0.9) 100%)'
-                  : 'linear-gradient(135deg, rgba(224, 247, 250, 0.9) 0%, rgba(179, 229, 252, 0.9) 100%)',
-                backdropFilter: 'blur(10px)',
-                boxShadow: isDarkMode
-                  ? '0 8px 32px rgba(0, 0, 0, 0.5)'
-                  : '0 8px 32px rgba(0, 0, 0, 0.1)',
-                border: isDarkMode
-                  ? '1px solid rgba(255, 255, 255, 0.1)'
-                  : '1px solid rgba(0, 0, 0, 0.1)',
-              }}
-            >
-              <Typography
-                id="modal-modal-title"
-                variant="h6"
-                sx={{
-                  mb: 2,
-                  fontFamily: '"Poppins", sans-serif',
-                  color: isDarkMode ? '#ffffff' : '#1976d2',
-                }}
-              >
-                Edit Access for {selectedMember?.firstName} {selectedMember?.lastName}
-              </Typography>
-              <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2 }}>
-                {availablePages.map((page) => (
-                  <FormControlLabel
-                    key={page.key}
-                    control={
-                      <Checkbox
-                        checked={tempPermissions[page.key] || false}
-                        onChange={(e) => handleAccessChange(page.key, e.target.checked)}
-                        sx={{
-                          color: isDarkMode ? '#ffffff' : '#1976d2',
-                          '&.Mui-checked': {
-                            color: muiTheme.palette.secondary.main,
-                          },
-                        }}
-                      />
-                    }
-                    label={page.label}
+                <Box sx={{ mt: 3, display: 'flex', gap: 2, justifyContent: 'flex-end' }}>
+                  <Button
+                    onClick={handleCloseModal}
+                    variant="outlined"
                     sx={{
-                      fontFamily: '"Poppins", sans-serif',
-                      color: isDarkMode ? '#ffffff' : '#333333',
+                      fontFamily: muiTheme.typography.fontFamily,
+                      color: muiTheme.palette.text.primary,
+                      borderColor: muiTheme.palette.border.main,
+                      borderRadius: '8px',
+                      transition: 'all 0.3s ease',
+                      '&:hover': {
+                        transform: 'scale(1.05)',
+                        borderColor: muiTheme.palette.primary.main,
+                        backgroundColor: muiTheme.custom.gradients.listItemHover,
+                      },
                     }}
-                  />
-                ))}
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    onClick={handleSaveAccess}
+                    variant="contained"
+                    sx={{
+                      fontFamily: muiTheme.typography.fontFamily,
+                      background: 'linear-gradient(90deg, #4285F4, #34A853)',
+                      color: '#ffffff',
+                      borderRadius: '8px',
+                      transition: 'all 0.3s ease',
+                      '&:hover': {
+                        transform: 'scale(1.05)',
+                        background: 'linear-gradient(90deg, #34A853, #4285F4)',
+                        boxShadow: muiTheme.custom.shadows.buttonHover,
+                      },
+                    }}
+                  >
+                    Save
+                  </Button>
+                </Box>
               </Box>
-              <Box sx={{ mt: 3, display: 'flex', gap: 2, justifyContent: 'flex-end' }}>
-                <Button
-                  onClick={handleCloseModal}
-                  variant="outlined"
-                  sx={{
-                    fontFamily: '"Poppins", sans-serif',
-                    color: isDarkMode ? '#ffffff' : '#1976d2',
-                    borderColor: isDarkMode ? '#ffffff' : '#1976d2',
-                    borderRadius: '8px',
-                    transition: 'all 0.3s ease',
-                    '&:hover': { transform: 'scale(1.05)', borderColor: muiTheme.palette.primary.main },
-                  }}
-                >
-                  Cancel
-                </Button>
-                <Button
-                  onClick={handleSaveAccess}
-                  variant="contained"
-                  sx={{
-                    fontFamily: '"Poppins", sans-serif',
-                    background: 'linear-gradient(90deg, #4285F4, #34A853)',
-                    color: '#ffffff',
-                    borderRadius: '8px',
-                    transition: 'all 0.3s ease',
-                    '&:hover': {
-                      transform: 'scale(1.05)',
-                      background: 'linear-gradient(90deg, #34A853, #4285F4)',
-                      boxShadow: '0 6px 16px rgba(0, 0, 0, 0.3)',
-                    },
-                  }}
-                >
-                  Save
-                </Button>
-              </Box>
-            </Box>
-          </Fade>
-        </Modal>
-        <Modal
-          open={deleteConfirmModal.open}
-          onClose={handleCloseDeleteConfirm}
-          aria-labelledby="delete-confirm-modal-title"
-        >
-          <Fade in={deleteConfirmModal.open}>
-            <Box
-              sx={{
-                position: 'absolute',
-                top: '50%',
-                left: '50%',
-                transform: 'translate(-50%, -50%)',
-                width: 400,
-                p: 4,
-                borderRadius: 2,
-                background: isDarkMode
-                  ? 'linear-gradient(135deg, rgba(26, 26, 46, 0.9) 0%, rgba(22, 33, 62, 0.9) 100%)'
-                  : 'linear-gradient(135deg, rgba(224, 247, 250, 0.9) 0%, rgba(179, 229, 252, 0.9) 100%)',
-                backdropFilter: 'blur(10px)',
-                boxShadow: isDarkMode
-                  ? '0 8px 32px rgba(0, 0, 0, 0.5)'
-                  : '0 8px 32px rgba(0, 0, 0, 0.1)',
-                border: isDarkMode
-                  ? '1px solid rgba(255, 255, 255, 0.1)'
-                  : '1px solid rgba(0, 0, 0, 0.1)',
-              }}
-            >
-              <Typography
-                id="delete-confirm-modal-title"
-                variant="h6"
-                sx={{
-                  mb: 2,
-                  fontFamily: '"Poppins", sans-serif',
-                  color: isDarkMode ? '#ffffff' : '#1976d2',
-                }}
-              >
-                Confirm Deletion
-              </Typography>
-              <Typography
-                sx={{
-                  mb: 3,
-                  fontFamily: '"Poppins", sans-serif',
-                  color: isDarkMode ? '#ffffff' : '#333333',
-                }}
-              >
-                Are you sure you want to delete {deleteConfirmModal.userName}? This action cannot be undone.
-              </Typography>
-              <Box sx={{ display: 'flex', gap: 2, justifyContent: 'flex-end' }}>
-                <Button
-                  onClick={handleCloseDeleteConfirm}
-                  variant="outlined"
-                  sx={{
-                    fontFamily: '"Poppins", sans-serif',
-                    color: isDarkMode ? '#ffffff' : '#1976d2',
-                    borderColor: isDarkMode ? '#ffffff' : '#1976d2',
-                    borderRadius: '8px',
-                    transition: 'all 0.3s ease',
-                    '&:hover': { transform: 'scale(1.05)', borderColor: muiTheme.palette.primary.main },
-                  }}
-                >
-                  Cancel
-                </Button>
-                <Button
-                  onClick={() => handleDeleteMember(deleteConfirmModal.userId)}
-                  variant="contained"
-                  color="error"
-                  sx={{
-                    fontFamily: '"Poppins", sans-serif',
-                    borderRadius: '8px',
-                    transition: 'all 0.3s ease',
-                    '&:hover': { transform: 'scale(1.05)', backgroundColor: muiTheme.palette.error.dark },
-                  }}
-                >
-                  Delete
-                </Button>
-              </Box>
-            </Box>
-          </Fade>
-        </Modal>
-        <Modal
-          open={approveConfirmModal.open}
-          onClose={handleCloseApproveConfirm}
-          aria-labelledby="approve-confirm-modal-title"
-        >
-          <Fade in={approveConfirmModal.open}>
-            <Box
-              sx={{
-                position: 'absolute',
-                top: '50%',
-                left: '50%',
-                transform: 'translate(-50%, -50%)',
-                width: 400,
-                p: 4,
-                borderRadius: 2,
-                background: isDarkMode
-                  ? 'linear-gradient(135deg, rgba(26, 26, 46, 0.9) 0%, rgba(22, 33, 62, 0.9) 100%)'
-                  : 'linear-gradient(135deg, rgba(224, 247, 250, 0.9) 0%, rgba(179, 229, 252, 0.9) 100%)',
-                backdropFilter: 'blur(10px)',
-                boxShadow: isDarkMode
-                  ? '0 8px 32px rgba(0, 0, 0, 0.5)'
-                  : '0 8px 32px rgba(0, 0, 0, 0.1)',
-                border: isDarkMode
-                  ? '1px solid rgba(255, 255, 255, 0.1)'
-                  : '1px solid rgba(0, 0, 0, 0.1)',
-              }}
-            >
-              <Typography
-                id="approve-confirm-modal-title"
-                variant="h6"
-                sx={{
-                  mb: 2,
-                  fontFamily: '"Poppins", sans-serif',
-                  color: isDarkMode ? '#ffffff' : '#1976d2',
-                }}
-              >
-                Confirm Approval
-              </Typography>
-              <Typography
-                sx={{
-                  mb: 3,
-                  fontFamily: '"Poppins", sans-serif',
-                  color: isDarkMode ? '#ffffff' : '#333333',
-                }}
-              >
-                Are you sure you want to approve {approveConfirmModal.userName} as a {approveConfirmModal.role}?
-              </Typography>
-              <Box sx={{ display: 'flex', gap: 2, justifyContent: 'flex-end' }}>
-                <Button
-                  onClick={handleCloseApproveConfirm}
-                  variant="outlined"
-                  sx={{
-                    fontFamily: '"Poppins", sans-serif',
-                    color: isDarkMode ? '#ffffff' : '#1976d2',
-                    borderColor: isDarkMode ? '#ffffff' : '#1976d2',
-                    borderRadius: '8px',
-                    transition: 'all 0.3s ease',
-                    '&:hover': { transform: 'scale(1.05)', borderColor: muiTheme.palette.primary.main },
-                  }}
-                >
-                  Cancel
-                </Button>
-                <Button
-                  onClick={() => handleApproveMember(approveConfirmModal.userId)}
-                  variant="contained"
-                  color="primary"
-                  sx={{
-                    fontFamily: '"Poppins", sans-serif',
-                    borderRadius: '8px',
-                    transition: 'all 0.3s ease',
-                    '&:hover': { transform: 'scale(1.05)', backgroundColor: muiTheme.palette.primary.dark },
-                  }}
-                >
-                  Approve
-                </Button>
-              </Box>
-            </Box>
-          </Fade>
-        </Modal>
-        <Snackbar
-          open={snackbar.open}
-          autoHideDuration={6000}
-          onClose={handleCloseSnackbar}
-          anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
-        >
-          <Alert
-            onClose={handleCloseSnackbar}
-            severity={snackbar.severity}
-            sx={{
-              width: '100%',
-              fontFamily: '"Poppins", sans-serif',
-              background: isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(255, 255, 255, 0.9)',
-              backdropFilter: 'blur(10px)',
-              color: isDarkMode ? '#ffffff' : '#333333',
-            }}
+            </Fade>
+          </Modal>
+          <Modal
+            open={deleteConfirmModal.open}
+            onClose={handleCloseDeleteConfirm}
+            aria-labelledby="delete-confirm-modal-title"
           >
-            {snackbar.message}
-          </Alert>
-        </Snackbar>
+            <Fade in={deleteConfirmModal.open}>
+              <Box
+                sx={{
+                  position: 'absolute',
+                  top: '50%',
+                  left: '50%',
+                  transform: 'translate(-50%, -50%)',
+                  width: 400,
+                  p: 4,
+                  borderRadius: 2,
+                  background: isDarkMode ? 'rgba(30, 30, 50, 0.95)' : 'rgba(255, 255, 255, 0.95)',
+                  boxShadow: muiTheme.custom.shadows.paper,
+                  border: `1px solid ${muiTheme.palette.border.main}`,
+                }}
+              >
+                <Typography
+                  id="delete-confirm-modal-title"
+                  variant="h6"
+                  sx={{
+                    mb: 2,
+                    fontFamily: muiTheme.typography.fontFamily,
+                    color: muiTheme.palette.primary.main,
+                  }}
+                >
+                  Confirm Deletion
+                </Typography>
+                <Typography
+                  sx={{
+                    mb: 3,
+                    fontFamily: muiTheme.typography.fontFamily,
+                    color: muiTheme.palette.text.primary,
+                  }}
+                >
+                  Are you sure you want to delete {deleteConfirmModal.userName}? This action cannot be undone.
+                </Typography>
+                <Box sx={{ display: 'flex', gap: 2, justifyContent: 'flex-end' }}>
+                  <Button
+                    onClick={handleCloseDeleteConfirm}
+                    variant="outlined"
+                    sx={{
+                      fontFamily: muiTheme.typography.fontFamily,
+                      color: muiTheme.palette.text.primary,
+                      borderColor: muiTheme.palette.border.main,
+                      borderRadius: '8px',
+                      transition: 'all 0.3s ease',
+                      '&:hover': {
+                        transform: 'scale(1.05)',
+                        borderColor: muiTheme.palette.primary.main,
+                        backgroundColor: muiTheme.custom.gradients.listItemHover,
+                      },
+                    }}
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    onClick={() => handleDeleteMember(deleteConfirmModal.userId)}
+                    variant="contained"
+                    color="error"
+                    sx={{
+                      fontFamily: muiTheme.typography.fontFamily,
+                      borderRadius: '8px',
+                      transition: 'all 0.3s ease',
+                      color: isDarkMode ? muiTheme.palette.text.primary : '#ffffff',
+                      '&:hover': {
+                        transform: 'scale(1.05)',
+                        backgroundColor: muiTheme.palette.error.dark,
+                        boxShadow: muiTheme.custom.shadows.buttonHover,
+                      },
+                    }}
+                  >
+                    Delete
+                  </Button>
+                </Box>
+              </Box>
+            </Fade>
+          </Modal>
+          <Modal
+            open={approveConfirmModal.open}
+            onClose={handleCloseApproveConfirm}
+            aria-labelledby="approve-confirm-modal-title"
+          >
+            <Fade in={approveConfirmModal.open}>
+              <Box
+                sx={{
+                  position: 'absolute',
+                  top: '50%',
+                  left: '50%',
+                  transform: 'translate(-50%, -50%)',
+                  width: 400,
+                  p: 4,
+                  borderRadius: 2,
+                  background: isDarkMode ? 'rgba(30, 30, 50, 0.95)' : 'rgba(255, 255, 255, 0.95)',
+                  boxShadow: muiTheme.custom.shadows.paper,
+                  border: `1px solid ${muiTheme.palette.border.main}`,
+                }}
+              >
+                <Typography
+                  id="approve-confirm-modal-title"
+                  variant="h6"
+                  sx={{
+                    mb: 2,
+                    fontFamily: muiTheme.typography.fontFamily,
+                    color: muiTheme.palette.primary.main,
+                  }}
+                >
+                  Confirm Approval
+                </Typography>
+                <Typography
+                  sx={{
+                    mb: 3,
+                    fontFamily: muiTheme.typography.fontFamily,
+                    color: muiTheme.palette.text.primary,
+                  }}
+                >
+                  Are you sure you want to approve {approveConfirmModal.userName} as a {approveConfirmModal.role}?
+                </Typography>
+                <Box sx={{ display: 'flex', gap: 2, justifyContent: 'flex-end' }}>
+                  <Button
+                    onClick={handleCloseApproveConfirm}
+                    variant="outlined"
+                    sx={{
+                      fontFamily: muiTheme.typography.fontFamily,
+                      color: muiTheme.palette.text.primary,
+                      borderColor: muiTheme.palette.border.main,
+                      borderRadius: '8px',
+                      transition: 'all 0.3s ease',
+                      '&:hover': {
+                        transform: 'scale(1.05)',
+                        borderColor: muiTheme.palette.primary.main,
+                        backgroundColor: muiTheme.custom.gradients.listItemHover,
+                      },
+                    }}
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    onClick={() => handleApproveMember(approveConfirmModal.userId)}
+                    variant="contained"
+                    color="primary"
+                    sx={{
+                      fontFamily: muiTheme.typography.fontFamily,
+                      background: 'linear-gradient(90deg, #4285F4, #34A853)',
+                      color: '#ffffff',
+                      borderRadius: '8px',
+                      transition: 'all 0.3s ease',
+                      '&:hover': {
+                        transform: 'scale(1.05)',
+                        background: 'linear-gradient(90deg, #34A853, #4285F4)',
+                        boxShadow: muiTheme.custom.shadows.buttonHover,
+                      },
+                    }}
+                  >
+                    Approve
+                  </Button>
+                </Box>
+              </Box>
+            </Fade>
+          </Modal>
+          <Snackbar
+            open={snackbar.open}
+            autoHideDuration={6000}
+            onClose={handleCloseSnackbar}
+            anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
+          >
+            <Alert
+              onClose={handleCloseSnackbar}
+              severity={snackbar.severity}
+              sx={{
+                width: '100%',
+                fontFamily: muiTheme.typography.fontFamily,
+                background: isDarkMode ? 'rgba(255, 255, 255, 0.05)' : 'rgba(255, 255, 255, 0.1)',
+                backdropFilter: 'blur(10px)',
+                color: muiTheme.palette.text.primary,
+              }}
+            >
+              {snackbar.message}
+            </Alert>
+          </Snackbar>
+        </Box>
       </Box>
     </Layout>
   );

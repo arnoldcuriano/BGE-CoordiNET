@@ -3,15 +3,21 @@ import { Box, CircularProgress } from '@mui/material';
 import Navbar from './Navbar';
 import Sidebar from './Sidebar';
 import { useAuth } from '../context/AuthContext';
-import { useTheme } from '../hooks/useTheme';
+import { useTheme } from '../context/ThemeContext';
 
 const Layout = ({ children }) => {
   const { authState } = useAuth();
-  const { isDarkMode } = useTheme();
+  const { isDarkMode, muiTheme } = useTheme();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [open, setOpen] = useState(false);
 
-  // Construct user object from authState
+  // Extract transition values with fallbacks
+  const transitionDuration = muiTheme.transitions?.duration?.leavingScreen ?? 300;
+  const transitionEasing = muiTheme.transitions?.easing?.easeInOut ?? 'ease-in-out';
+
+  // Debug logging to inspect muiTheme.transitions
+  console.log('Layout: muiTheme.transitions:', muiTheme.transitions);
+
   const user = authState.isAuthenticated
     ? {
         role: authState.userRole,
@@ -21,11 +27,10 @@ const Layout = ({ children }) => {
       }
     : null;
 
-  // Initialize open state based on window size
   useEffect(() => {
     const handleResize = () => {
       const isSmallScreen = window.innerWidth < 900;
-      setOpen(!isSmallScreen); // Open by default on larger screens
+      setOpen(!isSmallScreen);
     };
 
     handleResize();
@@ -46,7 +51,7 @@ const Layout = ({ children }) => {
   };
 
   return (
-    <Box sx={{ display: 'flex' }}>
+    <Box key={isDarkMode ? 'dark' : 'light'} sx={{ display: 'flex' }}>
       <Navbar
         handleDrawerToggle={handleDrawerToggle}
         user={user}
@@ -66,26 +71,19 @@ const Layout = ({ children }) => {
         component="main"
         sx={{
           flexGrow: 1,
-          p: 3,
-          pt: '64px', // Offset for navbar height
+          pt: '64px',
           width: {
             xs: '100%',
-            sm: `calc(100% - ${open ? 240 : 64}px)`,
+            sm: `calc(100% - ${open ? 260 : 70}px)`,
           },
-          background: isDarkMode
-            ? 'linear-gradient(135deg, #1a1a2e 0%, #16213e 100%)'
-            : 'linear-gradient(135deg, #e0f7fa 0%, #b3e5fc 100%)',
+          background: muiTheme.custom.gradients.backgroundDefault,
           minHeight: '100vh',
-          transition: (theme) =>
-            theme.transitions.create('width', {
-              easing: theme.transitions.easing.sharp,
-              duration: theme.transitions.duration.leavingScreen,
-            }),
+          transition: `width ${transitionDuration}ms ${transitionEasing}`,
         }}
       >
         {authState.loading ? (
           <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%' }}>
-            <CircularProgress size={40} sx={{ color: isDarkMode ? '#ffffff' : '#1976d2' }} />
+            <CircularProgress size={40} sx={{ color: muiTheme.palette.primary.main }} />
           </Box>
         ) : (
           children

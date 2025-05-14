@@ -31,9 +31,8 @@ import DescriptionIcon from '@mui/icons-material/Description';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import ExpandLessIcon from '@mui/icons-material/ExpandLess';
 import { useAuth } from '../context/AuthContext';
-import { useTheme } from '../hooks/useTheme';
+import { useTheme } from '../context/ThemeContext';
 import AddCardIcon from '@mui/icons-material/AddCard';
-import PeopleIcon from '@mui/icons-material/People';
 
 const Sidebar = ({
   mobileOpen,
@@ -43,19 +42,44 @@ const Sidebar = ({
   handleDrawerClose,
   user: propUser,
 }) => {
-  const { isDarkMode } = useTheme();
+  const { isDarkMode, muiTheme } = useTheme();
   const navigate = useNavigate();
   const location = useLocation();
   const { handleLogout, authState } = useAuth();
 
-  const [anchorEl, setAnchorEl] = useState(null);
-  const [openSubmenu, setOpenSubmenu] = useState(false);
-  const openMenu = Boolean(anchorEl);
+  // Determine the color for icons and text based on mode
+  const iconTextColor = isDarkMode ? muiTheme.palette.text.primary : muiTheme.palette.primary.main;
+  const secondaryTextColor = isDarkMode ? muiTheme.palette.text.secondary : muiTheme.palette.primary.main;
 
-  const accessPermissions = useMemo(() => authState.accessPermissions || {}, [authState.accessPermissions]);
+  // Determine the background gradient based on mode
+  const backgroundGradient = isDarkMode
+    ? muiTheme.custom.gradients.backgroundDefault // Keep dark mode gradient
+    : 'linear-gradient(190deg, #e3ffe7 0%, #d9e7ff 100%)'; // Light mode gradient
+
+  const [anchorEl, setAnchorEl] = useState(null);
+  const [openSubmenu, setOpenSubmenu] = useState({});
+
+  // Extract transition values with fallbacks
+  const transitionDuration = muiTheme.transitions?.duration?.standard ?? 300;
+  const transitionEasing = muiTheme.transitions?.easing?.easeInOut ?? 'ease-in-out';
+
+  // Debug logging to inspect muiTheme.transitions
+  console.log('Sidebar: muiTheme.transitions:', muiTheme.transitions);
+
+  const accessPermissions = useMemo(() => {
+    const perms = authState.accessPermissions || {};
+    if (perms instanceof Map) {
+      const obj = {};
+      perms.forEach((value, key) => {
+        obj[key] = value;
+      });
+      return obj;
+    }
+    return perms;
+  }, [authState.accessPermissions]);
+
   const isLoading = authState.loading;
 
-  // Fallback to authState.role instead of authState.userRole
   const user = useMemo(() => propUser || {
     role: authState.role,
     firstName: authState.firstName,
@@ -66,8 +90,8 @@ const Sidebar = ({
   const userRole = user.role;
   const isSuperAdmin = userRole === 'superadmin';
 
-  const drawerWidth = 240;
-  const miniDrawerWidth = 64;
+  const drawerWidth = 260;
+  const miniDrawerWidth = 70;
 
   const handleMenu = (event) => {
     setAnchorEl(event.currentTarget);
@@ -85,60 +109,76 @@ const Sidebar = ({
     }
   };
 
-  const handleSubmenuToggle = () => {
-    setOpenSubmenu((prev) => !prev);
+  const handleSubmenuToggle = (menuText) => {
+    setOpenSubmenu((prev) => ({
+      ...prev,
+      [menuText]: !prev[menuText],
+    }));
   };
 
-  // Updated menu items with Members as a submenu under HR Management
   const menuItems = [
-    { text: 'Dashboard', icon: <DashboardIcon />, path: '/dashboard', roles: ['admin', 'superadmin', 'viewer'], permissionKey: 'dashboard' },
-    { text: 'Partners', icon: <AddBusinessIcon/>, path: '/partners', roles: ['superadmin', 'viewer'], permissionKey: 'partners' },
-    { text: 'HR Management', icon: <GroupIcon />, path: '/hr-management', roles: ['superadmin', 'admin'], permissionKey: 'hrManagement', subItems: [
-      { text: 'Members', path: '/hr-management/members' },
-    ]},
-    { text: 'Finance Management', icon: <AddCardIcon />, path: '/finance-management', roles: ['superadmin'], permissionKey: 'settings' },
+    { text: 'Dashboard', icon: <DashboardIcon />, path: '/dashboard', permissionKey: 'dashboard' },
+    { text: 'Partners', icon: <AddBusinessIcon />, path: '/partners', permissionKey: 'partners' },
+    {
+      text: 'HR Management',
+      icon: <GroupIcon />,
+      path: '/hr-management',
+      permissionKey: 'hrManagement',
+      subItems: [
+        { text: 'Members', path: '/hr-management/members', permissionKey: 'members' }
+      ]
+    },
+    { text: 'Finance Management', icon: <AddCardIcon />, path: '/finance-management', permissionKey: 'financeManagement' },
     {
       text: 'Projects',
       icon: <CreateNewFolderIcon />,
       path: '/projects',
-      roles: ['superadmin', 'viewer'],
       permissionKey: 'projects',
       subItems: [
-        { text: 'Active Projects', path: '/projects/active' },
-        { text: 'Archived Projects', path: '/projects/archived' },
+        { text: 'Active Projects', path: '/projects/active', permissionKey: 'projects' },
+        { text: 'Archived Projects', path: '/projects/archived', permissionKey: 'projects' },
       ],
     },
-    { text: 'IT Inventory', icon: <DevicesOtherIcon />, path: '/it-inventory', roles: ['superadmin', 'viewer'], permissionKey: 'itInventory' },
-    { text: 'Quick Tools', icon: <AutoFixHighIcon />, path: '/quick-tools', roles: ['superadmin', 'viewer'], permissionKey: 'quickTools' },
-    { text: 'Super Admin Dashboard', icon: <AdminPanelSettingsIcon />, path: '/superadmin-dashboard', roles: ['superadmin'], permissionKey: 'superadminDashboard' },
+    { text: 'IT Inventory', icon: <DevicesOtherIcon />, path: '/it-inventory', permissionKey: 'itInventory' },
+    { text: 'Quick Tools', icon: <AutoFixHighIcon />, path: '/quick-tools', permissionKey: 'quickTools' },
+    { text: 'Super Admin Dashboard', icon: <AdminPanelSettingsIcon />, path: '/superadmin-dashboard', permissionKey: 'superadminDashboard' },
   ];
 
   const knowledgeBaseItems = [
-    { text: 'Help', icon: <HelpIcon />, path: '/help' },
-    { text: 'Patch Notes', icon: <DescriptionIcon />, path: '/patch-notes' },
+    { text: 'Help', icon: <HelpIcon />, path: '/help', permissionKey: 'help' },
+    { text: 'Patch Notes', icon: <DescriptionIcon />, path: '/patch-notes', permissionKey: 'patchNotes' },
   ];
 
   const drawerContent = (
-    <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
-      <Box sx={{ height: '64px', display: 'flex', alignItems: 'center', px: 2 }}>
+    <Box key={isDarkMode ? 'dark' : 'light'} sx={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+      <Box
+        sx={{
+          height: '64px',
+          display: 'flex',
+          alignItems: 'center',
+          px: 2,
+          background: backgroundGradient, // Use dynamic gradient
+          backdropFilter: 'blur(10px)',
+          borderBottom: `1px solid ${muiTheme.palette.border.main}`,
+        }}
+      >
         {open && (
           <Typography
             variant="h6"
             sx={{
-              fontWeight: 'bold',
-              color: isDarkMode ? '#ffffff' : '#1976d2',
-              fontFamily: '"Poppins", sans-serif',
-              textShadow: isDarkMode ? '0 0 8px rgba(255, 255, 255, 0.3)' : 'none',
+              fontWeight: 700,
+              fontFamily: muiTheme.typography.fontFamily,
+              color: muiTheme.palette.primary.main,
             }}
           >
-            BGE CoordiNET
+            BGE
           </Typography>
         )}
       </Box>
-      <Divider sx={{ borderColor: isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)' }} />
+      <Divider sx={{ borderColor: muiTheme.palette.border.main }} />
       {isLoading ? (
         <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', p: 2 }}>
-          <CircularProgress size={24} sx={{ color: isDarkMode ? '#ffffff' : '#1976d2' }} />
+          <CircularProgress size={24} sx={{ color: muiTheme.palette.primary.main }} />
         </Box>
       ) : (
         <>
@@ -147,22 +187,28 @@ const Sidebar = ({
               variant="caption"
               sx={{
                 px: 2,
-                pt: 1,
-                color: isDarkMode ? '#cccccc' : '#666666',
-                fontFamily: '"Poppins", sans-serif',
+                pt: 2,
+                pb: 1,
+                color: secondaryTextColor,
+                fontFamily: muiTheme.typography.fontFamily,
                 fontSize: '0.75rem',
+                textTransform: 'uppercase',
+                letterSpacing: '1px',
               }}
             >
-              Menu List
+              Navigation
             </Typography>
           )}
           <List sx={{ flexGrow: 1, overflow: 'auto' }}>
             {menuItems.map((item) => {
               const isSelected = location.pathname === item.path;
-              const hasRole = user && item.roles.includes(userRole);
               const hasPermission = isSuperAdmin || (accessPermissions[item.permissionKey] === true);
+              const hasSubmenuPermission = item.subItems
+                ? item.subItems.some(subItem => isSuperAdmin || (accessPermissions[subItem.permissionKey] === true))
+                : false;
+              console.log(`Menu item ${item.text} permission:`, hasPermission, `Has Submenu Permission:`, hasSubmenuPermission, `Access Permissions:`, accessPermissions);
 
-              if (!hasRole || !hasPermission) {
+              if (!hasPermission && !hasSubmenuPermission) {
                 return null;
               }
 
@@ -172,26 +218,22 @@ const Sidebar = ({
                     <ListItemButton
                       component={item.subItems ? 'div' : Link}
                       to={item.subItems ? undefined : item.path}
-                      onClick={item.subItems ? handleSubmenuToggle : undefined}
+                      onClick={item.subItems ? () => handleSubmenuToggle(item.text) : undefined}
                       selected={isSelected}
                       sx={{
                         minHeight: 48,
                         justifyContent: open ? 'initial' : 'center',
                         px: 2.5,
-                        backgroundColor: isSelected
-                          ? isDarkMode
-                            ? 'rgba(255, 255, 255, 0.2)'
-                            : 'rgba(0, 0, 0, 0.1)'
+                        background: isSelected
+                          ? muiTheme.custom.gradients.listItemHover
                           : 'transparent',
+                        borderLeft: isSelected
+                          ? `3px solid ${muiTheme.palette.primary.main}`
+                          : 'none',
                         '&:hover': {
-                          backgroundColor: isDarkMode
-                            ? 'rgba(255, 255, 255, 0.3)'
-                            : 'rgba(0, 0, 0, 0.15)',
-                          boxShadow: isDarkMode
-                            ? '0 0 10px rgba(255, 255, 255, 0.2)'
-                            : '0 0 10px rgba(0, 0, 0, 0.1)',
+                          background: muiTheme.custom.gradients.listItemHover,
                         },
-                        transition: 'all 0.3s ease',
+                        transition: `all ${transitionDuration}ms ${transitionEasing}`,
                       }}
                     >
                       <Tooltip
@@ -199,7 +241,7 @@ const Sidebar = ({
                         placement="right"
                         disableHoverListener={open}
                         sx={{
-                          fontFamily: '"Poppins", sans-serif',
+                          fontFamily: muiTheme.typography.fontFamily,
                           fontSize: '0.85rem',
                         }}
                       >
@@ -208,7 +250,8 @@ const Sidebar = ({
                             minWidth: 0,
                             mr: open ? 3 : 'auto',
                             justifyContent: 'center',
-                            color: isDarkMode ? '#ffffff' : '#1976d2',
+                            color: iconTextColor,
+                            transition: `all ${transitionDuration}ms ${transitionEasing}`,
                           }}
                         >
                           {item.icon}
@@ -218,57 +261,68 @@ const Sidebar = ({
                         <ListItemText
                           primary={item.text}
                           primaryTypographyProps={{
-                            fontWeight: isSelected ? 'bold' : 'normal',
-                            color: isDarkMode ? '#ffffff' : '#1976d2',
-                            fontFamily: '"Poppins", sans-serif',
-                            fontSize: '0.85rem',
+                            fontWeight: isSelected ? 500 : 400,
+                            color: iconTextColor,
+                            fontFamily: muiTheme.typography.fontFamily,
+                            fontSize: '0.9rem',
                           }}
                         />
                       )}
                       {item.subItems && open && (
-                        openSubmenu ? <ExpandLessIcon /> : <ExpandMoreIcon />
+                        openSubmenu[item.text] ? 
+                        <ExpandLessIcon sx={{ color: iconTextColor }} /> : 
+                        <ExpandMoreIcon sx={{ color: iconTextColor }} />
                       )}
                     </ListItemButton>
                   </ListItem>
                   {item.subItems && open && (
-                    <Collapse in={openSubmenu} timeout="auto" unmountOnExit>
+                    <Collapse
+                      in={openSubmenu[item.text]}
+                      timeout={transitionDuration}
+                      unmountOnExit
+                      sx={{
+                        transition: `all ${transitionDuration}ms ${transitionEasing}`,
+                      }}
+                    >
                       <List component="div" disablePadding sx={{ pl: 4 }}>
-                        {item.subItems.map((subItem) => (
-                          <ListItem key={subItem.text} disablePadding>
-                            <ListItemButton
-                              component={Link}
-                              to={subItem.path}
-                              sx={{
-                                minHeight: 36,
-                                px: 2.5,
-                                backgroundColor: location.pathname === subItem.path
-                                  ? isDarkMode
-                                    ? 'rgba(255, 255, 255, 0.2)'
-                                    : 'rgba(0, 0, 0, 0.1)'
-                                  : 'transparent',
-                                '&:hover': {
-                                  backgroundColor: isDarkMode
-                                    ? 'rgba(255, 255, 255, 0.3)'
-                                    : 'rgba(0, 0, 0, 0.15)',
-                                  boxShadow: isDarkMode
-                                    ? '0 0 10px rgba(255, 255, 255, 0.2)'
-                                    : '0 0 10px rgba(0, 0, 0, 0.1)',
-                                },
-                                transition: 'all 0.3s ease',
-                              }}
-                            >
-                              <ListItemText
-                                primary={subItem.text}
-                                primaryTypographyProps={{
-                                  fontWeight: location.pathname === subItem.path ? 'bold' : 'normal',
-                                  color: isDarkMode ? '#ffffff' : '#1976d2',
-                                  fontFamily: '"Poppins", sans-serif',
-                                  fontSize: '0.8rem',
+                        {item.subItems.map((subItem) => {
+                          const subHasPermission = isSuperAdmin || (accessPermissions[subItem.permissionKey] === true);
+                          console.log(`Submenu item ${subItem.text} permission:`, subHasPermission, `Access Permissions:`, accessPermissions);
+
+                          if (!subHasPermission) {
+                            return null;
+                          }
+
+                          return (
+                            <ListItem key={subItem.text} disablePadding>
+                              <ListItemButton
+                                component={Link}
+                                to={subItem.path}
+                                sx={{
+                                  minHeight: 36,
+                                  px: 2.5,
+                                  backgroundColor: location.pathname === subItem.path
+                                    ? muiTheme.custom.gradients.listItemHover
+                                    : 'transparent',
+                                  '&:hover': {
+                                    backgroundColor: muiTheme.custom.gradients.listItemHover,
+                                  },
+                                  transition: `all ${transitionDuration}ms ${transitionEasing}`,
                                 }}
-                              />
-                            </ListItemButton>
-                          </ListItem>
-                        ))}
+                              >
+                                <ListItemText
+                                  primary={subItem.text}
+                                  primaryTypographyProps={{
+                                    fontWeight: location.pathname === subItem.path ? 500 : 400,
+                                    color: iconTextColor,
+                                    fontFamily: muiTheme.typography.fontFamily,
+                                    fontSize: '0.85rem',
+                                  }}
+                                />
+                              </ListItemButton>
+                            </ListItem>
+                          );
+                        })}
                       </List>
                     </Collapse>
                   )}
@@ -276,86 +330,91 @@ const Sidebar = ({
               );
             })}
 
-            {/* Updated Knowledge Base Section */}
-            <Divider sx={{ 
-              borderColor: isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)',
-              my: 1
-            }} />
+            <Divider sx={{ borderColor: muiTheme.palette.border.main, my: 1 }} />
             <Typography
               variant="caption"
               sx={{
                 px: 2,
                 pt: 2,
                 pb: 1,
-                color: isDarkMode ? '#cccccc' : '#666666',
-                fontFamily: '"Poppins", sans-serif',
-                fontSize: '0.75rem',
+                color: secondaryTextColor,
+                fontFamily: muiTheme.typography.fontFamily,
                 display: open ? 'block' : 'none',
               }}
             >
               Knowledge Base
             </Typography>
             <List>
-              {knowledgeBaseItems.map((item) => (
-                <ListItem key={item.text} disablePadding>
-                  <ListItemButton
-                    component={Link}
-                    to={item.path}
-                    sx={{
-                      minHeight: 48,
-                      px: 2.5,
-                      backgroundColor: location.pathname === item.path
-                        ? isDarkMode
-                          ? 'rgba(255, 255, 255, 0.2)'
-                          : 'rgba(0, 0, 0, 0.1)'
-                        : 'transparent',
-                      '&:hover': {
-                        backgroundColor: isDarkMode
-                          ? 'rgba(255, 255, 255, 0.3)'
-                          : 'rgba(0, 0, 0, 0.15)',
-                        boxShadow: isDarkMode
-                          ? '0 0 10px rgba(255, 255, 255, 0.2)'
-                          : '0 0 10px rgba(0, 0, 0, 0.1)',
-                      },
-                      transition: 'all 0.3s ease',
-                    }}
-                  >
-                    <Tooltip
-                      title={item.text}
-                      placement="right"
-                      disableHoverListener={open}
+              {knowledgeBaseItems.map((item) => {
+                const hasPermission = isSuperAdmin || (accessPermissions[item.permissionKey] === true);
+                console.log(`Knowledge Base item ${item.text} permission:`, hasPermission, `Access Permissions:`, accessPermissions);
+                if (!hasPermission) return null;
+
+                return (
+                  <ListItem key={item.text} disablePadding>
+                    <ListItemButton
+                      component={Link}
+                      to={item.path}
+                      sx={{
+                        minHeight: 48,
+                        px: 2.5,
+                        backgroundColor: location.pathname === item.path
+                          ? muiTheme.custom.gradients.listItemHover
+                          : 'transparent',
+                        '&:hover': {
+                          backgroundColor: muiTheme.custom.gradients.listItemHover,
+                        },
+                        transition: `all ${transitionDuration}ms ${transitionEasing}`,
+                      }}
                     >
-                      <ListItemIcon
-                        sx={{
-                          minWidth: 0,
-                          mr: open ? 3 : 'auto',
-                          justifyContent: 'center',
-                          color: isDarkMode ? '#ffffff' : '#1976d2',
-                        }}
+                      <Tooltip
+                        title={item.text}
+                        placement="right"
+                        disableHoverListener={open}
                       >
-                        {item.icon}
-                      </ListItemIcon>
-                    </Tooltip>
-                    {open && (
-                      <ListItemText
-                        primary={item.text}
-                        primaryTypographyProps={{
-                          fontWeight: location.pathname === item.path ? 'bold' : 'normal',
-                          color: isDarkMode ? '#ffffff' : '#1976d2',
-                          fontFamily: '"Poppins", sans-serif',
-                          fontSize: '0.85rem',
-                        }}
-                      />
-                    )}
-                  </ListItemButton>
-                </ListItem>
-              ))}
+                        <ListItemIcon
+                          sx={{
+                            minWidth: 0,
+                            mr: open ? 3 : 'auto',
+                            justifyContent: 'center',
+                            color: iconTextColor,
+                            transition: `all ${transitionDuration}ms ${transitionEasing}`,
+                          }}
+                        >
+                          {item.icon}
+                        </ListItemIcon>
+                      </Tooltip>
+                      {open && (
+                        <ListItemText
+                          primary={item.text}
+                          primaryTypographyProps={{
+                            fontWeight: location.pathname === item.path ? 500 : 400,
+                            color: iconTextColor,
+                            fontFamily: muiTheme.typography.fontFamily,
+                            fontSize: '0.9rem',
+                          }}
+                        />
+                      )}
+                    </ListItemButton>
+                  </ListItem>
+                );
+              })}
             </List>
           </List>
         </>
       )}
-      <Divider sx={{ borderColor: isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)' }} />
-      <Box sx={{ p: 1.5, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+      <Divider sx={{ borderColor: muiTheme.palette.border.main }} />
+      <Box
+        sx={{
+          p: 1.5,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          background: backgroundGradient, // Use dynamic gradient
+          backdropFilter: 'blur(10px)',
+          borderTop: `1px solid ${muiTheme.palette.border.main}`,
+        }}
+      >
         {open && user && (
           <Box sx={{ display: 'flex', alignItems: 'center', maxWidth: '80%' }}>
             <Avatar
@@ -365,18 +424,15 @@ const Sidebar = ({
                 width: 36,
                 height: 36,
                 mr: 1,
-                border: isDarkMode
-                  ? '2px solid rgba(255, 255, 255, 0.3)'
-                  : '2px solid rgba(0, 0, 0, 0.3)',
               }}
             />
             <Box sx={{ display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
               <Typography
                 variant="body2"
                 sx={{
-                  fontWeight: 'medium',
-                  color: isDarkMode ? '#ffffff' : '#1976d2',
-                  fontFamily: '"Poppins", sans-serif',
+                  fontWeight: 500,
+                  color: iconTextColor,
+                  fontFamily: muiTheme.typography.fontFamily,
                   whiteSpace: 'nowrap',
                   overflow: 'hidden',
                   textOverflow: 'ellipsis',
@@ -387,8 +443,8 @@ const Sidebar = ({
               <Typography
                 variant="caption"
                 sx={{
-                  color: isDarkMode ? '#cccccc' : '#666666',
-                  fontFamily: '"Poppins", sans-serif',
+                  color: secondaryTextColor,
+                  fontFamily: muiTheme.typography.fontFamily,
                 }}
               >
                 {user.role ? user.role.charAt(0).toUpperCase() + user.role.slice(1) : 'Unknown Role'}
@@ -399,27 +455,23 @@ const Sidebar = ({
         <IconButton
           onClick={handleMenu}
           sx={{
-            color: isDarkMode ? '#ffffff' : '#1976d2',
+            color: iconTextColor,
+            '&:hover': {
+              backgroundColor: muiTheme.custom.gradients.listItemHover,
+            },
           }}
         >
           <MoreVertIcon />
         </IconButton>
         <Menu
           anchorEl={anchorEl}
-          open={openMenu}
+          open={Boolean(anchorEl)}
           onClose={handleClose}
           PaperProps={{
             sx: {
-              background: isDarkMode
-                ? 'linear-gradient(135deg, rgba(26, 26, 46, 0.9) 0%, rgba(22, 33, 62, 0.9) 100%)'
-                : 'linear-gradient(135deg, rgba(224, 247, 250, 0.9) 0%, rgba(179, 229, 252, 0.9) 100%)',
-              backdropFilter: 'blur(10px)',
-              boxShadow: isDarkMode
-                ? '0 8px 32px rgba(0, 0, 0, 0.5)'
-                : '0 8px 32px rgba(0, 0, 0, 0.1)',
-              border: isDarkMode
-                ? '1px solid rgba(255, 255, 255, 0.1)'
-                : '1px solid rgba(0, 0, 0, 0.1)',
+              background: muiTheme.palette.background.glass,
+              boxShadow: muiTheme.custom.shadows.paper,
+              border: muiTheme.palette.border.glass,
             },
           }}
         >
@@ -428,11 +480,11 @@ const Sidebar = ({
             component={Link}
             to="/profile-settings"
             sx={{
-              fontFamily: '"Poppins", sans-serif',
+              fontFamily: muiTheme.typography.fontFamily,
               fontSize: '0.85rem',
-              color: isDarkMode ? '#ffffff' : '#1976d2',
+              color: iconTextColor,
               '&:hover': {
-                backgroundColor: isDarkMode ? 'rgba(255, 255, 255, 0.2)' : 'rgba(0, 0, 0, 0.1)',
+                backgroundColor: muiTheme.custom.gradients.listItemHover,
               },
             }}
           >
@@ -443,11 +495,11 @@ const Sidebar = ({
             component={Link}
             to="/account-settings"
             sx={{
-              fontFamily: '"Poppins", sans-serif',
+              fontFamily: muiTheme.typography.fontFamily,
               fontSize: '0.85rem',
-              color: isDarkMode ? '#ffffff' : '#1976d2',
+              color: iconTextColor,
               '&:hover': {
-                backgroundColor: isDarkMode ? 'rgba(255, 255, 255, 0.2)' : 'rgba(0, 0, 0, 0.1)',
+                backgroundColor: muiTheme.custom.gradients.listItemHover,
               },
             }}
           >
@@ -456,11 +508,11 @@ const Sidebar = ({
           <MenuItem
             onClick={handleLogoutClick}
             sx={{
-              fontFamily: '"Poppins", sans-serif',
+              fontFamily: muiTheme.typography.fontFamily,
               fontSize: '0.85rem',
-              color: isDarkMode ? '#ffffff' : '#1976d2',
+              color: iconTextColor,
               '&:hover': {
-                backgroundColor: isDarkMode ? 'rgba(255, 255, 255, 0.2)' : 'rgba(0, 0, 0, 0.1)',
+                backgroundColor: muiTheme.custom.gradients.listItemHover,
               },
             }}
           >
@@ -485,16 +537,13 @@ const Sidebar = ({
           '& .MuiDrawer-paper': {
             boxSizing: 'border-box',
             width: drawerWidth,
-            background: isDarkMode
-              ? 'linear-gradient(180deg, #1a1a2e 0%, #16213e 100%)'
-              : 'linear-gradient(180deg, #e0f7fa 0%, #b3e5fc 100%)',
+            background: backgroundGradient, // Use dynamic gradient
             backdropFilter: 'blur(10px)',
-            borderRight: 'none',
-            boxShadow: isDarkMode
-              ? '0 8px 32px rgba(0, 0, 0, 0.5)'
-              : '0 8px 32px rgba(0, 0, 0, 0.1)',
+            borderRight: `1px solid ${muiTheme.palette.border.main}`,
+            boxShadow: muiTheme.custom.shadows.paper,
             top: 0,
             height: '100vh',
+            transition: `all ${transitionDuration}ms ${transitionEasing}`,
           },
         }}
       >
@@ -507,25 +556,18 @@ const Sidebar = ({
           display: { xs: 'none', sm: 'block' },
           width: open ? drawerWidth : miniDrawerWidth,
           flexShrink: 0,
-          transition: (theme) =>
-            theme.transitions.create('width', {
-              easing: theme.transitions.easing.sharp,
-              duration: theme.transitions.duration.enteringScreen,
-            }),
+          transition: `all ${transitionDuration}ms ${transitionEasing}`,
           '& .MuiDrawer-paper': {
             width: open ? drawerWidth : miniDrawerWidth,
             boxSizing: 'border-box',
-            background: isDarkMode
-              ? 'linear-gradient(180deg, #1a1a2e 0%, #16213e 100%)'
-              : 'linear-gradient(180deg, #e0f7fa 0%, #b3e5fc 100%)',
+            background: backgroundGradient, // Use dynamic gradient
             backdropFilter: 'blur(10px)',
-            borderRight: 'none',
-            boxShadow: isDarkMode
-              ? '0 8px 32px rgba(0, 0, 0, 0.5)'
-              : '0 8px 32px rgba(0, 0, 0, 0.1)',
+            borderRight: `1px solid ${muiTheme.palette.border.main}`,
+            boxShadow: muiTheme.custom.shadows.paper,
             top: 0,
             height: '100vh',
             overflowX: 'hidden',
+            transition: `all ${transitionDuration}ms ${transitionEasing}`,
           },
         }}
       >

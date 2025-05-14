@@ -18,21 +18,29 @@ import CloseIcon from '@mui/icons-material/Close';
 import { Link, useNavigate } from 'react-router-dom';
 import { LightMode, DarkMode, Notifications, Search, Apps, Palette } from '@mui/icons-material';
 import { useAuth } from '../context/AuthContext';
-import { useTheme } from '../hooks/useTheme';
+import { useTheme } from '../context/ThemeContext'; 
 
 const Navbar = ({ handleDrawerToggle, user, open, handleDrawerOpen, handleDrawerClose }) => {
+  const { isDarkMode, toggleTheme, muiTheme } = useTheme();
   const [anchorEl, setAnchorEl] = useState(null);
   const [notifAnchorEl, setNotifAnchorEl] = useState(null);
   const [appAnchorEl, setAppAnchorEl] = useState(null);
   const [colorAnchorEl, setColorAnchorEl] = useState(null);
   const [searchOpen, setSearchOpen] = useState(false);
-  const { isDarkMode, toggleTheme } = useTheme();
   const menuOpen = Boolean(anchorEl);
   const notifOpen = Boolean(notifAnchorEl);
   const appOpen = Boolean(appAnchorEl);
   const colorOpen = Boolean(colorAnchorEl);
   const navigate = useNavigate();
   const { handleLogout } = useAuth();
+
+  // Determine the color for icons and text based on mode
+  const iconTextColor = isDarkMode ? muiTheme.palette.text.primary : muiTheme.palette.primary.main;
+
+  // Determine the background gradient based on mode
+  const backgroundGradient = isDarkMode
+    ? muiTheme.custom.gradients.backgroundDefault // Keep dark mode gradient
+    : 'linear-gradient(90deg, #e3ffe7 0%, #d9e7ff 100%)'; // Light mode gradient
 
   const handleMenu = (event) => {
     setAnchorEl(event.currentTarget);
@@ -81,10 +89,8 @@ const Navbar = ({ handleDrawerToggle, user, open, handleDrawerOpen, handleDrawer
 
   const handleSidebarToggle = () => {
     if (window.innerWidth < 600) {
-      // On mobile (xs), toggle the temporary drawer
       handleDrawerToggle();
     } else {
-      // On desktop (sm and up), toggle the permanent drawer's open state
       if (open) {
         handleDrawerClose();
       } else {
@@ -95,7 +101,7 @@ const Navbar = ({ handleDrawerToggle, user, open, handleDrawerOpen, handleDrawer
 
   const notifications = [
     { id: 1, message: 'New member added to the team' },
-    { id: 2, message: 'Project deadline approaching' },
+    { id: 2, message: 'Access Request' },
   ];
 
   const apps = [
@@ -109,42 +115,45 @@ const Navbar = ({ handleDrawerToggle, user, open, handleDrawerOpen, handleDrawer
     { name: 'Purple', value: '#9C27B0' },
   ];
 
+  // Fallback for transition duration to prevent errors
+  const transitionDuration = muiTheme.transitions?.duration?.standard ?? 300;
+
   return (
     <AppBar
       position="fixed"
       sx={{
-        zIndex: (theme) => theme.zIndex.drawer + 1, // 1201
-        background: isDarkMode
-          ? 'linear-gradient(90deg, rgba(26, 26, 46, 0.9) 0%, rgba(22, 33, 62, 0.9) 100%)'
-          : 'linear-gradient(90deg, rgba(224, 247, 250, 0.9) 0%, rgba(179, 229, 252, 0.9) 100%)',
+        zIndex: (theme) => theme.zIndex.drawer + 1,
+        background: backgroundGradient, // Use dynamic gradient
         backdropFilter: 'blur(10px)',
-        boxShadow: isDarkMode
-          ? '0 8px 32px rgba(0, 0, 0, 0.5)'
-          : '0 8px 32px rgba(0, 0, 0, 0.1)',
-        borderBottom: isDarkMode
-          ? '1px solid rgba(255, 255, 255, 0.1)'
-          : '1px solid rgba(0, 0, 0, 0.1)',
-        height: '64px', // Fixed height
+        boxShadow: muiTheme.custom.shadows.paper,
+        borderBottom: `1px solid ${muiTheme.palette.border.main}`,
+        height: '64px',
       }}
     >
       <Toolbar
         sx={{
           height: '64px',
           minHeight: '64px !important',
-          paddingLeft: { xs: 0, sm: 0 }, // Override all screen sizes
+          paddingLeft: { xs: 0, sm: 0 },
           paddingRight: { xs: '16px', sm: '24px' },
+          background: backgroundGradient, // Ensure Toolbar matches AppBar
         }}
       >
         <IconButton
-         color="inherit"
-         aria-label={open ? "close drawer" : "open drawer"}
-         edge="start"
-         onClick={handleSidebarToggle}
-         sx={{ 
-           mr: 2, 
-           ml: 1 // Remove left margin
-         }}
-       >
+          color="inherit"
+          aria-label={open ? "close drawer" : "open drawer"}
+          edge="start"
+          onClick={handleSidebarToggle}
+          sx={{
+            mr: 2,
+            ml: 1,
+            color: iconTextColor,
+            '&:hover': {
+              backgroundColor: muiTheme.custom.gradients.listItemHover,
+            },
+            transition: `all ${transitionDuration}ms ${muiTheme.custom.transitions?.easing?.easeInOut ?? 'ease-in-out'}`,
+          }}
+        >
           {open ? <CloseIcon /> : <MenuIcon />}
         </IconButton>
         <Typography
@@ -154,38 +163,58 @@ const Navbar = ({ handleDrawerToggle, user, open, handleDrawerOpen, handleDrawer
           to="/dashboard"
           sx={{
             flexGrow: 1,
-            fontFamily: '"Poppins", sans-serif',
-            fontWeight: 600,
-            color: isDarkMode ? '#ffffff' : '#1976d2',
-            textShadow: isDarkMode ? '0 0 8px rgba(255, 255, 255, 0.3)' : 'none',
+            fontFamily: muiTheme.typography.fontFamily,
+            fontWeight: 700,
+            color: muiTheme.palette.primary.main,
             textDecoration: 'none',
           }}
         >
-          BGE CoordiNET
+          BGE
         </Typography>
         <Box sx={{ display: 'flex', alignItems: 'center' }}>
-          {searchOpen ? (
+          <Box
+            sx={{
+              display: searchOpen ? 'block' : 'none',
+              width: searchOpen ? '200px' : '0px',
+              overflow: 'hidden',
+              transition: `width ${transitionDuration}ms ${muiTheme.custom.transitions?.easing?.easeInOut ?? 'ease-in-out'}`,
+              mr: searchOpen ? 2 : 0,
+            }}
+          >
             <TextField
               size="small"
               placeholder="Search..."
               autoFocus
               onBlur={() => setSearchOpen(false)}
               sx={{
-                mr: 2,
                 width: '200px',
-                backgroundColor: isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.05)',
-                borderRadius: '4px',
-                '& .MuiInputBase-input': {
-                  color: isDarkMode ? '#ffffff' : '#1976d2',
-                  fontFamily: '"Poppins", sans-serif',
+                backgroundColor: muiTheme.custom.gradients.listItem,
+                borderRadius: '12px',
+                '& .MuiInputBase-root': {
+                  border: 'none',
+                  background: 'transparent',
+                  color: iconTextColor,
+                  fontFamily: muiTheme.typography.fontFamily,
                 },
+                '& .MuiInputBase-input': {
+                  padding: '8px 16px',
+                },
+                transition: `all ${transitionDuration}ms ${muiTheme.custom.transitions?.easing?.easeInOut ?? 'ease-in-out'}`,
               }}
             />
-          ) : (
+          </Box>
+          {!searchOpen && (
             <IconButton
               color="inherit"
               onClick={() => setSearchOpen(true)}
-              sx={{ mr: 1 }}
+              sx={{
+                mr: 1,
+                color: iconTextColor,
+                '&:hover': {
+                  backgroundColor: muiTheme.custom.gradients.listItemHover,
+                },
+                transition: `all ${transitionDuration}ms ${muiTheme.custom.transitions?.easing?.easeInOut ?? 'ease-in-out'}`,
+              }}
             >
               <Search />
             </IconButton>
@@ -193,7 +222,14 @@ const Navbar = ({ handleDrawerToggle, user, open, handleDrawerOpen, handleDrawer
           <IconButton
             color="inherit"
             onClick={handleNotifMenu}
-            sx={{ mr: 1 }}
+            sx={{
+              mr: 1,
+              color: iconTextColor,
+              '&:hover': {
+                backgroundColor: muiTheme.custom.gradients.listItemHover,
+              },
+              transition: `all ${transitionDuration}ms ${muiTheme.custom.transitions?.easing?.easeInOut ?? 'ease-in-out'}`,
+            }}
           >
             <Badge badgeContent={notifications.length} color="error">
               <Notifications />
@@ -205,16 +241,9 @@ const Navbar = ({ handleDrawerToggle, user, open, handleDrawerOpen, handleDrawer
             onClose={handleNotifClose}
             PaperProps={{
               sx: {
-                background: isDarkMode
-                  ? 'linear-gradient(135deg, rgba(26, 26, 46, 0.9) 0%, rgba(22, 33, 62, 0.9) 100%)'
-                  : 'linear-gradient(135deg, rgba(224, 247, 250, 0.9) 0%, rgba(179, 229, 252, 0.9) 100%)',
-                backdropFilter: 'blur(10px)',
-                boxShadow: isDarkMode
-                  ? '0 8px 32px rgba(0, 0, 0, 0.5)'
-                  : '0 8px 32px rgba(0, 0, 0, 0.1)',
-                border: isDarkMode
-                  ? '1px solid rgba(255, 255, 255, 0.1)'
-                  : '1px solid rgba(0, 0, 0, 0.1)',
+                background: muiTheme.palette.background.glass,
+                boxShadow: muiTheme.custom.shadows.paper,
+                border: muiTheme.palette.border.glass,
                 maxHeight: '300px',
                 width: '250px',
               },
@@ -226,11 +255,11 @@ const Navbar = ({ handleDrawerToggle, user, open, handleDrawerOpen, handleDrawer
                   key={notif.id}
                   onClick={handleNotifClose}
                   sx={{
-                    fontFamily: '"Poppins", sans-serif',
+                    fontFamily: muiTheme.typography.fontFamily,
                     fontSize: '0.85rem',
-                    color: isDarkMode ? '#ffffff' : '#1976d2',
+                    color: iconTextColor,
                     '&:hover': {
-                      backgroundColor: isDarkMode ? 'rgba(255, 255, 255, 0.2)' : 'rgba(0, 0, 0, 0.1)',
+                      backgroundColor: muiTheme.custom.gradients.listItemHover,
                     },
                   }}
                 >
@@ -240,9 +269,9 @@ const Navbar = ({ handleDrawerToggle, user, open, handleDrawerOpen, handleDrawer
             ) : (
               <MenuItem
                 sx={{
-                  fontFamily: '"Poppins", sans-serif',
+                  fontFamily: muiTheme.typography.fontFamily,
                   fontSize: '0.85rem',
-                  color: isDarkMode ? '#ffffff' : '#1976d2',
+                  color: iconTextColor,
                 }}
               >
                 No notifications
@@ -252,7 +281,14 @@ const Navbar = ({ handleDrawerToggle, user, open, handleDrawerOpen, handleDrawer
           <IconButton
             color="inherit"
             onClick={handleAppMenu}
-            sx={{ mr: 1 }}
+            sx={{
+              mr: 1,
+              color: iconTextColor,
+              '&:hover': {
+                backgroundColor: muiTheme.custom.gradients.listItemHover,
+              },
+              transition: `all ${transitionDuration}ms ${muiTheme.custom.transitions?.easing?.easeInOut ?? 'ease-in-out'}`,
+            }}
           >
             <Apps />
           </IconButton>
@@ -262,16 +298,9 @@ const Navbar = ({ handleDrawerToggle, user, open, handleDrawerOpen, handleDrawer
             onClose={handleAppClose}
             PaperProps={{
               sx: {
-                background: isDarkMode
-                  ? 'linear-gradient(135deg, rgba(26, 26, 46, 0.9) 0%, rgba(22, 33, 62, 0.9) 100%)'
-                  : 'linear-gradient(135deg, rgba(224, 247, 250, 0.9) 0%, rgba(179, 229, 252, 0.9) 100%)',
-                backdropFilter: 'blur(10px)',
-                boxShadow: isDarkMode
-                  ? '0 8px 32px rgba(0, 0, 0, 0.5)'
-                  : '0 8px 32px rgba(0, 0, 0, 0.1)',
-                border: isDarkMode
-                  ? '1px solid rgba(255, 255, 255, 0.1)'
-                  : '1px solid rgba(0, 0, 0, 0.1)',
+                background: muiTheme.palette.background.glass,
+                boxShadow: muiTheme.custom.shadows.paper,
+                border: muiTheme.palette.border.glass,
               },
             }}
           >
@@ -282,11 +311,11 @@ const Navbar = ({ handleDrawerToggle, user, open, handleDrawerOpen, handleDrawer
                 component={Link}
                 to={app.path}
                 sx={{
-                  fontFamily: '"Poppins", sans-serif',
+                  fontFamily: muiTheme.typography.fontFamily,
                   fontSize: '0.85rem',
-                  color: isDarkMode ? '#ffffff' : '#1976d2',
+                  color: iconTextColor,
                   '&:hover': {
-                    backgroundColor: isDarkMode ? 'rgba(255, 255, 255, 0.2)' : 'rgba(0, 0, 0, 0.1)',
+                    backgroundColor: muiTheme.custom.gradients.listItemHover,
                   },
                 }}
               >
@@ -297,7 +326,14 @@ const Navbar = ({ handleDrawerToggle, user, open, handleDrawerOpen, handleDrawer
           <IconButton
             color="inherit"
             onClick={handleColorMenu}
-            sx={{ mr: 1 }}
+            sx={{
+              mr: 1,
+              color: iconTextColor,
+              '&:hover': {
+                backgroundColor: muiTheme.custom.gradients.listItemHover,
+              },
+              transition: `all ${transitionDuration}ms ${muiTheme.custom.transitions?.easing?.easeInOut ?? 'ease-in-out'}`,
+            }}
           >
             <Palette />
           </IconButton>
@@ -307,16 +343,9 @@ const Navbar = ({ handleDrawerToggle, user, open, handleDrawerOpen, handleDrawer
             onClose={handleColorClose}
             PaperProps={{
               sx: {
-                background: isDarkMode
-                  ? 'linear-gradient(135deg, rgba(26, 26, 46, 0.9) 0%, rgba(22, 33, 62, 0.9) 100%)'
-                  : 'linear-gradient(135deg, rgba(224, 247, 250, 0.9) 0%, rgba(179, 229, 252, 0.9) 100%)',
-                backdropFilter: 'blur(10px)',
-                boxShadow: isDarkMode
-                  ? '0 8px 32px rgba(0, 0, 0, 0.5)'
-                  : '0 8px 32px rgba(0, 0, 0, 0.1)',
-                border: isDarkMode
-                  ? '1px solid rgba(255, 255, 255, 0.1)'
-                  : '1px solid rgba(0, 0, 0, 0.1)',
+                background: muiTheme.palette.background.glass,
+                boxShadow: muiTheme.custom.shadows.paper,
+                border: muiTheme.palette.border.glass,
               },
             }}
           >
@@ -325,11 +354,11 @@ const Navbar = ({ handleDrawerToggle, user, open, handleDrawerOpen, handleDrawer
                 key={color.name}
                 onClick={() => handleColorSelect(color.value)}
                 sx={{
-                  fontFamily: '"Poppins", sans-serif',
+                  fontFamily: muiTheme.typography.fontFamily,
                   fontSize: '0.85rem',
-                  color: isDarkMode ? '#ffffff' : '#1976d2',
+                  color: iconTextColor,
                   '&:hover': {
-                    backgroundColor: isDarkMode ? 'rgba(255, 255, 255, 0.2)' : 'rgba(0, 0, 0, 0.1)',
+                    backgroundColor: muiTheme.custom.gradients.listItemHover,
                   },
                 }}
               >
@@ -352,7 +381,15 @@ const Navbar = ({ handleDrawerToggle, user, open, handleDrawerOpen, handleDrawer
             checked={isDarkMode}
             onChange={toggleTheme}
             icon={<LightMode sx={{ color: '#ffb300' }} />}
-            checkedIcon={<DarkMode sx={{ color: '#1976d2' }} />}
+            checkedIcon={<DarkMode sx={{ color: muiTheme.palette.primary.main }} />}
+            sx={{
+              '& .MuiSwitch-track': {
+                backgroundColor: iconTextColor,
+              },
+              '& .MuiSwitch-thumb': {
+                backgroundColor: muiTheme.palette.background.default,
+              },
+            }}
           />
           {user && (
             <>
@@ -361,7 +398,7 @@ const Navbar = ({ handleDrawerToggle, user, open, handleDrawerOpen, handleDrawer
                 arrow
                 placement="bottom"
                 sx={{
-                  fontFamily: '"Poppins", sans-serif',
+                  fontFamily: muiTheme.typography.fontFamily,
                   fontSize: '0.85rem',
                 }}
               >
@@ -370,10 +407,9 @@ const Navbar = ({ handleDrawerToggle, user, open, handleDrawerOpen, handleDrawer
                   sx={{
                     p: 0,
                     '&:hover': {
-                      backgroundColor: isDarkMode ? 'rgba(255, 255, 255, 0.2)' : 'rgba(0, 0, 0, 0.1)',
-                      boxShadow: isDarkMode ? '0 0 10px rgba(255, 255, 255, 0.3)' : 'none',
+                      backgroundColor: muiTheme.custom.gradients.listItemHover,
                     },
-                    transition: 'all 0.3s ease',
+                    transition: `all ${transitionDuration}ms ${muiTheme.custom.transitions?.easing?.easeInOut ?? 'ease-in-out'}`,
                   }}
                 >
                   <Avatar
@@ -382,9 +418,6 @@ const Navbar = ({ handleDrawerToggle, user, open, handleDrawerOpen, handleDrawer
                     sx={{
                       width: 36,
                       height: 36,
-                      border: isDarkMode
-                        ? '2px solid rgba(255, 255, 255, 0.3)'
-                        : '2px solid rgba(0, 0, 0, 0.3)',
                     }}
                   />
                 </IconButton>
@@ -395,16 +428,9 @@ const Navbar = ({ handleDrawerToggle, user, open, handleDrawerOpen, handleDrawer
                 onClose={handleClose}
                 PaperProps={{
                   sx: {
-                    background: isDarkMode
-                      ? 'linear-gradient(135deg, rgba(26, 26, 46, 0.9) 0%, rgba(22, 33, 62, 0.9) 100%)'
-                      : 'linear-gradient(135deg, rgba(224, 247, 250, 0.9) 0%, rgba(179, 229, 252, 0.9) 100%)',
-                    backdropFilter: 'blur(10px)',
-                    boxShadow: isDarkMode
-                      ? '0 8px 32px rgba(0, 0, 0, 0.5)'
-                      : '0 8px 32px rgba(0, 0, 0, 0.1)',
-                    border: isDarkMode
-                      ? '1px solid rgba(255, 255, 255, 0.1)'
-                      : '1px solid rgba(0, 0, 0, 0.1)',
+                    background: muiTheme.palette.background.glass,
+                    boxShadow: muiTheme.custom.shadows.paper,
+                    border: muiTheme.palette.border.glass,
                   },
                 }}
               >
@@ -413,11 +439,11 @@ const Navbar = ({ handleDrawerToggle, user, open, handleDrawerOpen, handleDrawer
                   component={Link}
                   to="/profile-settings"
                   sx={{
-                    fontFamily: '"Poppins", sans-serif',
+                    fontFamily: muiTheme.typography.fontFamily,
                     fontSize: '0.85rem',
-                    color: isDarkMode ? '#ffffff' : '#1976d2',
+                    color: iconTextColor,
                     '&:hover': {
-                      backgroundColor: isDarkMode ? 'rgba(255, 255, 255, 0.2)' : 'rgba(0, 0, 0, 0.1)',
+                      backgroundColor: muiTheme.custom.gradients.listItemHover,
                     },
                   }}
                 >
@@ -428,11 +454,11 @@ const Navbar = ({ handleDrawerToggle, user, open, handleDrawerOpen, handleDrawer
                   component={Link}
                   to="/account-settings"
                   sx={{
-                    fontFamily: '"Poppins", sans-serif',
+                    fontFamily: muiTheme.typography.fontFamily,
                     fontSize: '0.85rem',
-                    color: isDarkMode ? '#ffffff' : '#1976d2',
+                    color: iconTextColor,
                     '&:hover': {
-                      backgroundColor: isDarkMode ? 'rgba(255, 255, 255, 0.2)' : 'rgba(0, 0, 0, 0.1)',
+                      backgroundColor: muiTheme.custom.gradients.listItemHover,
                     },
                   }}
                 >
@@ -441,11 +467,11 @@ const Navbar = ({ handleDrawerToggle, user, open, handleDrawerOpen, handleDrawer
                 <MenuItem
                   onClick={handleLogoutClick}
                   sx={{
-                    fontFamily: '"Poppins", sans-serif',
+                    fontFamily: muiTheme.typography.fontFamily,
                     fontSize: '0.85rem',
-                    color: isDarkMode ? '#ffffff' : '#1976d2',
+                    color: iconTextColor,
                     '&:hover': {
-                      backgroundColor: isDarkMode ? 'rgba(255, 255, 255, 0.2)' : 'rgba(0, 0, 0, 0.1)',
+                      backgroundColor: muiTheme.custom.gradients.listItemHover,
                     },
                   }}
                 >

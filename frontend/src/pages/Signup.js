@@ -16,7 +16,7 @@ import Visibility from '@mui/icons-material/Visibility';
 import VisibilityOff from '@mui/icons-material/VisibilityOff';
 import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
-import { useTheme } from '../hooks/useTheme'; // Custom hook for ThemeContext
+import { useTheme } from '../context/ThemeContext';
 
 // Define animations
 const fadeIn = keyframes`
@@ -56,6 +56,9 @@ const Signup = () => {
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
   const { authState } = useAuth();
+
+  // Define the greenlight color from branding
+  const greenLightColor = '#34A853'; // Solid green for text and borders
 
   useEffect(() => {
     if (authState.isAuthenticated && window.location.pathname === '/signup') {
@@ -189,15 +192,15 @@ const Signup = () => {
                   borderColor: muiTheme.palette.border?.main || 'rgba(0, 0, 0, 0.1)',
                 },
                 '&:hover fieldset': {
-                  borderColor: muiTheme.palette.secondary?.main || '#34A853',
+                  borderColor: greenLightColor, // Updated hover border color
                 },
                 '&:hover': {
                   transform: 'translateY(-2px)',
                   boxShadow: muiTheme.custom?.shadow?.listItem || (theme.isDarkMode ? '0 4px 15px rgba(0, 0, 0, 0.3)' : '0 4px 15px rgba(0, 0, 0, 0.1)'),
                 },
                 '&.Mui-focused fieldset': {
-                  borderColor: muiTheme.palette.secondary?.main || '#34A853',
-                  boxShadow: `0 0 8px ${muiTheme.palette.secondary?.main || '#34A853'}33`,
+                  borderColor: greenLightColor, // Updated focused border color
+                  boxShadow: `0 0 8px ${greenLightColor}33`, // Updated focused shadow
                 },
                 '&.Mui-focused': {
                   transform: 'translateY(-2px)',
@@ -232,15 +235,15 @@ const Signup = () => {
                   borderColor: muiTheme.palette.border?.main || 'rgba(0, 0, 0, 0.1)',
                 },
                 '&:hover fieldset': {
-                  borderColor: muiTheme.palette.secondary?.main || '#34A853',
+                  borderColor: greenLightColor, // Updated hover border color
                 },
                 '&:hover': {
                   transform: 'translateY(-2px)',
                   boxShadow: muiTheme.custom?.shadow?.listItem || (theme.isDarkMode ? '0 4px 15px rgba(0, 0, 0, 0.3)' : '0 4px 15px rgba(0, 0, 0, 0.1)'),
                 },
                 '&.Mui-focused fieldset': {
-                  borderColor: muiTheme.palette.secondary?.main || '#34A853',
-                  boxShadow: `0 0 8px ${muiTheme.palette.secondary?.main || '#34A853'}33`,
+                  borderColor: greenLightColor, // Updated focused border color
+                  boxShadow: `0 0 8px ${greenLightColor}33`, // Updated focused shadow
                 },
                 '&.Mui-focused': {
                   transform: 'translateY(-2px)',
@@ -270,21 +273,21 @@ const Signup = () => {
             sx={{
               '& .MuiOutlinedInput-root': {
                 borderRadius: '8px',
-                background: muiTheme.palette.background?.listItem || 'rgba(255, 255, 255, 0.5)',
+                background: muiTheme.palette.background?.listItem || 'rgba(255, 255, 255, 0.5)', // Vibrant green for consistency with branding
                 transition: 'all 0.3s ease',
                 '& fieldset': {
                   borderColor: muiTheme.palette.border?.main || 'rgba(0, 0, 0, 0.1)',
                 },
                 '&:hover fieldset': {
-                  borderColor: muiTheme.palette.secondary?.main || '#34A853',
+                  borderColor: greenLightColor, // Updated hover border color
                 },
                 '&:hover': {
                   transform: 'translateY(-2px)',
                   boxShadow: muiTheme.custom?.shadow?.listItem || (theme.isDarkMode ? '0 4px 15px rgba(0, 0, 0, 0.3)' : '0 4px 15px rgba(0, 0, 0, 0.1)'),
                 },
                 '&.Mui-focused fieldset': {
-                  borderColor: muiTheme.palette.secondary?.main || '#34A853',
-                  boxShadow: `0 0 8px ${muiTheme.palette.secondary?.main || '#34A853'}33`,
+                  borderColor: greenLightColor, // Updated focused border color
+                  boxShadow: `0 0 8px ${greenLightColor}33`, // Updated focused shadow
                 },
                 '&.Mui-focused': {
                   transform: 'translateY(-2px)',
@@ -317,7 +320,12 @@ const Signup = () => {
                   <IconButton
                     onClick={handleClickShowPassword}
                     edge="end"
-                    sx={{ color: muiTheme.palette.text?.secondary || '#666' }}
+                    sx={{ 
+                      color: muiTheme.palette.text?.secondary || '#666',
+                      '&:hover': {
+                        color: greenLightColor, // Added hover color
+                      },
+                    }}
                   >
                     {showPassword ? <VisibilityOff /> : <Visibility />}
                   </IconButton>
@@ -333,15 +341,15 @@ const Signup = () => {
                   borderColor: muiTheme.palette.border?.main || 'rgba(0, 0, 0, 0.1)',
                 },
                 '&:hover fieldset': {
-                  borderColor: muiTheme.palette.secondary?.main || '#34A853',
+                  borderColor: greenLightColor, // Updated hover border color
                 },
                 '&:hover': {
                   transform: 'translateY(-2px)',
                   boxShadow: muiTheme.custom?.shadow?.listItem || (theme.isDarkMode ? '0 4px 15px rgba(0, 0, 0, 0.3)' : '0 4px 15px rgba(0, 0, 0, 0.1)'),
                 },
                 '&.Mui-focused fieldset': {
-                  borderColor: muiTheme.palette.secondary?.main || '#34A853',
-                  boxShadow: `0 0 8px ${muiTheme.palette.secondary?.main || '#34A853'}33`,
+                  borderColor: greenLightColor, // Updated focused border color
+                  boxShadow: `0 0 8px ${greenLightColor}33`, // Updated focused shadow
                 },
                 '&.Mui-focused': {
                   transform: 'translateY(-2px)',
@@ -387,7 +395,12 @@ const Signup = () => {
                   <IconButton
                     onClick={handleClickShowConfirmPassword}
                     edge="end"
-                    sx={{ color: muiTheme.palette.text?.secondary || '#666' }}
+                    sx={{ 
+                      color: muiTheme.palette.text?.secondary || '#666',
+                      '&:hover': {
+                        color: greenLightColor, // Added hover color
+                      },
+                    }}
                   >
                     {showConfirmPassword ? <VisibilityOff /> : <Visibility />}
                   </IconButton>
@@ -403,15 +416,15 @@ const Signup = () => {
                   borderColor: muiTheme.palette.border?.main || 'rgba(0, 0, 0, 0.1)',
                 },
                 '&:hover fieldset': {
-                  borderColor: muiTheme.palette.secondary?.main || '#34A853',
+                  borderColor: greenLightColor, // Updated hover border color
                 },
                 '&:hover': {
                   transform: 'translateY(-2px)',
                   boxShadow: muiTheme.custom?.shadow?.listItem || (theme.isDarkMode ? '0 4px 15px rgba(0, 0, 0, 0.3)' : '0 4px 15px rgba(0, 0, 0, 0.1)'),
                 },
                 '&.Mui-focused fieldset': {
-                  borderColor: muiTheme.palette.secondary?.main || '#34A853',
-                  boxShadow: `0 0 8px ${muiTheme.palette.secondary?.main || '#34A853'}33`,
+                  borderColor: greenLightColor, // Updated focused border color
+                  boxShadow: `0 0 8px ${greenLightColor}33`, // Updated focused shadow
                 },
                 '&.Mui-focused': {
                   transform: 'translateY(-2px)',
@@ -482,7 +495,7 @@ const Signup = () => {
               py: 1.5,
               transition: 'transform 0.2s, box-shadow 0.3s',
               '&:hover': {
-                borderColor: muiTheme.palette.secondary?.main || '#34A853',
+                borderColor: greenLightColor, // Updated hover border color
                 boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)',
                 transform: 'scale(1.02)',
               },

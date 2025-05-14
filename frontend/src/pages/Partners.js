@@ -2,7 +2,7 @@ import React from 'react';
 import { Box, Typography, useTheme as useMuiTheme } from '@mui/material';
 import Layout from '../components/Layout';
 import { useAuth } from '../context/AuthContext';
-import { useTheme } from '../hooks/useTheme';
+import { useTheme } from '../context/ThemeContext'
 
 const Partners = () => {
   const muiTheme = useMuiTheme();

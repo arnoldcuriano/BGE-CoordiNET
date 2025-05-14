@@ -3,7 +3,7 @@ import { createRoot } from 'react-dom/client';
 import App from './App';
 import { ThemeProvider } from './context/ThemeContext';
 import './styles/global.css';
-import './styles/lightTheme.css';
+// import './styles/lightTheme.css';
 import axios from 'axios';
 
 // Configure axios defaults

@@ -16,7 +16,7 @@ import Visibility from '@mui/icons-material/Visibility';
 import VisibilityOff from '@mui/icons-material/VisibilityOff';
 import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
-import { useTheme } from '../hooks/useTheme';
+import { useTheme } from '../context/ThemeContext';
 
 // Define animations
 const fadeIn = keyframes`
@@ -53,6 +53,9 @@ const ResetPassword = () => {
   const { authState } = useAuth();
   const [searchParams] = useSearchParams();
   const token = searchParams.get('token');
+
+  // Define the greenlight color from branding
+  const greenLightColor = '#34A853'; // Solid green for text and borders
 
   useEffect(() => {
     if (authState.isAuthenticated && window.location.pathname === '/reset-password') {
@@ -185,7 +188,7 @@ const ResetPassword = () => {
                     sx={{
                       color: muiTheme.palette.text?.secondary || '#666',
                       '&:hover': {
-                        color: muiTheme.palette.secondary?.main || '#34A853',
+                        color: greenLightColor, // Updated hover color
                       },
                     }}
                   >
@@ -203,15 +206,15 @@ const ResetPassword = () => {
                   borderColor: muiTheme.palette.border?.main || 'rgba(0, 0, 0, 0.1)',
                 },
                 '&:hover fieldset': {
-                  borderColor: muiTheme.palette.secondary?.main || '#34A853',
+                  borderColor: greenLightColor, // Updated hover border color
                 },
                 '&:hover': {
                   transform: 'translateY(-2px)',
                   boxShadow: muiTheme.custom?.shadow?.listItem || (theme.isDarkMode ? '0 4px 15px rgba(0, 0, 0, 0.3)' : '0 4px 15px rgba(0, 0, 0, 0.1)'),
                 },
                 '&.Mui-focused fieldset': {
-                  borderColor: muiTheme.palette.secondary?.main || '#34A853',
-                  boxShadow: `0 0 8px ${muiTheme.palette.secondary?.main || '#34A853'}33`,
+                  borderColor: greenLightColor, // Updated focused border color
+                  boxShadow: `0 0 8px ${greenLightColor}33`, // Updated focused shadow
                 },
                 '&.Mui-focused': {
                   transform: 'translateY(-2px)',
@@ -247,7 +250,7 @@ const ResetPassword = () => {
                     sx={{
                       color: muiTheme.palette.text?.secondary || '#666',
                       '&:hover': {
-                        color: muiTheme.palette.secondary?.main || '#34A853',
+                        color: greenLightColor, // Updated hover color
                       },
                     }}
                   >
@@ -265,15 +268,15 @@ const ResetPassword = () => {
                   borderColor: muiTheme.palette.border?.main || 'rgba(0, 0, 0, 0.1)',
                 },
                 '&:hover fieldset': {
-                  borderColor: muiTheme.palette.secondary?.main || '#34A853',
+                  borderColor: greenLightColor, // Updated hover border color
                 },
                 '&:hover': {
                   transform: 'translateY(-2px)',
                   boxShadow: muiTheme.custom?.shadow?.listItem || (theme.isDarkMode ? '0 4px 15px rgba(0, 0, 0, 0.3)' : '0 4px 15px rgba(0, 0, 0, 0.1)'),
                 },
                 '&.Mui-focused fieldset': {
-                  borderColor: muiTheme.palette.secondary?.main || '#34A853',
-                  boxShadow: `0 0 8px ${muiTheme.palette.secondary?.main || '#34A853'}33`,
+                  borderColor: greenLightColor, // Updated focused border color
+                  boxShadow: `0 0 8px ${greenLightColor}33`, // Updated focused shadow
                 },
                 '&.Mui-focused': {
                   transform: 'translateY(-2px)',
@@ -331,7 +334,7 @@ const ResetPassword = () => {
               py: 1.5,
               transition: 'transform 0.2s, box-shadow 0.3s',
               '&:hover': {
-                borderColor: muiTheme.palette.secondary?.main || '#34A853',
+                borderColor: greenLightColor, // Updated hover border color
                 boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)',
                 transform: 'scale(1.02)',
               },
