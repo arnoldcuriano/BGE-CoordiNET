@@ -2,7 +2,7 @@ const passport = require('passport');
 const GoogleStrategy = require('passport-google-oauth20').Strategy;
 const User = require('./models/User');
 const LocalStrategy = require('passport-local').Strategy;
-const bcrypt = require('bcrypt'); // Change from bcryptjs to bcrypt
+const bcrypt = require('bcrypt');
 
 // Allowed email domains
 const allowedDomains = ['bgecorp.com', 'beglobalecommercecorp.com'];
@@ -59,7 +59,7 @@ passport.use(
 
         // Check if approved
         if (!user.isApproved) {
-          return done(null, false, { message: 'Account not approved yet' });
+          return done(null, false, { message: 'Your account is awaiting approval.' });
         }
 
         done(null, user);
@@ -81,11 +81,11 @@ passport.use(
       }
       
       if (!user.isApproved) {
-        return done(null, false, { message: 'Account not approved yet' });
+        return done(null, false, { message: 'Your account is awaiting approval.' });
       }
       
       const isMatch = await bcrypt.compare(password, user.password);
-      console.log('Password comparison result for', email, ':', isMatch); // Add logging
+      console.log('Password comparison result for', email, ':', isMatch);
       if (!isMatch) {
         return done(null, false, { message: 'Invalid email or password' });
       }

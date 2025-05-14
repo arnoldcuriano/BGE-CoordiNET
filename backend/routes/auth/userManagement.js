@@ -5,20 +5,29 @@ const nodemailer = require('nodemailer');
 const bcrypt = require('bcrypt');
 
 router.get('/user', (req, res) => {
-  console.log('GET /auth/user - req.user:', req.user);
   if (!req.user) {
     return res.status(401).json({ message: 'Not authenticated' });
   }
 
+  // Base permissions for all users (public routes)
   let permissions = {
     help: true,
     patchNotes: true,
-    settings: true,
+    profileSettings: true,
+    accountSettings: true,
+    settings: true, // Ensure settings is explicitly included
   };
 
+  // Default role-based permissions (only applied if explicitly set by Super Admin)
   const roleDefaults = {
-    viewer: { dashboard: true },
-    admin: { dashboard: true, members: true, 'pending-users': true },
+    viewer: {
+      dashboard: true, // Will only apply if set in accessPermissions
+    },
+    admin: {
+      dashboard: true,
+      members: true,
+      'pending-users': true,
+    },
     superadmin: {
       dashboard: true,
       member: true,
@@ -30,21 +39,46 @@ router.get('/user', (req, res) => {
       superadminDashboard: true,
       analytics: true,
       financeManagement: true,
+      help: true,
+      patchNotes: true,
+      profileSettings: true,
+      accountSettings: true,
+      settings: true,
     },
   };
 
-  if (req.user.role && roleDefaults[req.user.role]) {
-    Object.assign(permissions, roleDefaults[req.user.role]);
+  // For superadmins, grant full access
+  if (req.user.role === 'superadmin') {
+    permissions = { ...roleDefaults.superadmin };
+  } else {
+    const userPermissions = req.user.accessPermissions && typeof req.user.accessPermissions === 'object'
+      ? req.user.accessPermissions
+      : {};
+    let finalPermissions = { ...permissions };
+
+    // Convert Map to plain object if necessary
+    if (userPermissions instanceof Map) {
+      userPermissions.forEach((value, key) => {
+        finalPermissions[key] = value;
+      });
+    } else {
+      // Only apply permissions from user.accessPermissions if they exist
+      Object.keys(userPermissions).forEach((key) => {
+        finalPermissions[key] = userPermissions[key];
+      });
+    }
+
+    // Ensure settings maps to profileSettings and accountSettings
+    if (finalPermissions.settings === true) {
+      finalPermissions.profileSettings = true;
+      finalPermissions.accountSettings = true;
+      finalPermissions.settings = true;
+    }
+
+    permissions = finalPermissions;
   }
 
-  const userPermissions = req.user.accessPermissions && typeof req.user.accessPermissions === 'object'
-    ? req.user.accessPermissions
-    : {};
-  Object.keys(permissions).forEach((key) => {
-    if (key in userPermissions) {
-      permissions[key] = userPermissions[key];
-    }
-  });
+  console.log('User permissions for', req.user.email, ':', permissions);
 
   res.json({
     id: req.user._id,
@@ -71,26 +105,14 @@ router.post('/approve-user', async (req, res) => {
     }
     user.isApproved = true;
     user.role = role;
-    const roleDefaults = {
-      viewer: { help: true, patchNotes: true, settings: true, dashboard: true },
-      admin: { help: true, patchNotes: true, settings: true, dashboard: true, members: true, 'pending-users': true },
-      superadmin: {
-        help: true,
-        patchNotes: true,
-        settings: true,
-        dashboard: true,
-        member: true,
-        partners: true,
-        hrManagement: true,
-        projects: true,
-        itInventory: true,
-        quickTools: true,
-        superadminDashboard: true,
-        analytics: true,
-        financeManagement: true,
-      },
+    // Only assign public route permissions initially
+    user.accessPermissions = {
+      help: true,
+      patchNotes: true,
+      settings: true,
+      profileSettings: true,
+      accountSettings: true,
     };
-    user.accessPermissions = roleDefaults[role] || { help: true, patchNotes: true, settings: true };
     await user.save();
 
     setImmediate(async () => {

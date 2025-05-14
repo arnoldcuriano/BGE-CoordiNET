@@ -10,7 +10,6 @@ const nodemailer = require('nodemailer');
 const allowedDomains = ['bgecorp.com', 'beglobalecommercecorp.com'];
 
 // Local Login
-// In authLocal.js
 router.post('/login', (req, res, next) => {
   const { rememberMe } = req.body;
   console.log('Login request received, rememberMe:', rememberMe);
@@ -30,6 +29,10 @@ router.post('/login', (req, res, next) => {
     }
     if (!user) {
       console.log('Authentication failed:', info.message);
+      // Customize the message for unapproved users
+      if (info.message === 'Your account is awaiting approval.') {
+        return res.status(403).json({ message: info.message });
+      }
       return res.status(401).json({ message: info.message || 'Login failed' });
     }
 
@@ -50,7 +53,8 @@ router.post('/login', (req, res, next) => {
           profilePicture: user.profilePicture,
           accessPermissions: user.accessPermissions,
         },
-        redirect: user.role === 'viewer' ? '/welcome' : '/dashboard'
+        // Let the frontend handle the redirect
+        message: 'Login successful'
       });
     });
   })(req, res, next);
@@ -103,8 +107,6 @@ router.post('/register', async (req, res) => {
 
 // Logout route
 router.get('/logout', (req, res) => {
-  console.log('Logout request received, session:', req.session);
-  console.log('Cookies received:', req.cookies);
   req.logout((err) => {
     if (err) {
       console.error('Logout error:', err);

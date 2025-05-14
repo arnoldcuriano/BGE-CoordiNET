@@ -80,9 +80,6 @@ app.get('/', (req, res) => {
 
 // Error handling middleware
 app.use((err, req, res, next) => {
-  console.log('Session middleware - Session ID:', req.sessionID);
-  console.log('Session middleware - Session data:', req.session);
-  console.error('Server Error:', err);
   res.status(500).json({ error: 'Internal Server Error' });
 });
 
