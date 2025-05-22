@@ -18,7 +18,7 @@ const fadeIn = keyframes`
 `;
 
 const Partners = () => {
-  const { isDarkMode, toggleTheme, muiTheme } = useTheme();
+  const { isDarkMode, muiTheme } = useTheme();
   const { authState } = useAuth();
   const navigate = useNavigate();
 

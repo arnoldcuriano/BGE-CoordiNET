@@ -73,7 +73,7 @@ import React, { useState, useEffect } from 'react';
     const [loading, setLoading] = useState(false);
     const [googleLoading, setGoogleLoading] = useState(false);
     const [message, setMessage] = useState('');
-    const { login, fetchUser, authState } = useAuth();
+    const { login, authState } = useAuth();
     const navigate = useNavigate();
 
     const greenLightColor = '#34A853';
@@ -594,29 +594,6 @@ import React, { useState, useEffect } from 'react';
                 )}
               </Button>
             </form>
-            <Button
-              fullWidth
-              variant="outlined"
-              onClick={handleTestRequest}
-              sx={{
-                mt: 2,
-                color: isDarkMode ? '#ffffff' : '#1976d2',
-                borderColor: isDarkMode ? '#ffffff' : '#1976d2',
-                borderRadius: '8px',
-                py: 1.5,
-                fontFamily: "'Poppins', sans-serif",
-                fontWeight: 'bold',
-                transition: 'transform 0.2s, box-shadow 0.3s',
-                '&:hover': {
-                  borderColor: '#34A853',
-                  color: '#34A853',
-                  boxShadow: '0 4px 12px rgba(0, 0, 0, 0.2)',
-                  transform: 'scale(1.02)',
-                },
-              }}
-            >
-              Test Proxy Request
-            </Button>
             <Divider sx={{ my: 2, color: muiTheme?.palette?.text?.secondary, fontFamily: "'Poppins', sans-serif" }}>
               OR
             </Divider>

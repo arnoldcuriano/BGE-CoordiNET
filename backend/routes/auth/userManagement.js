@@ -237,35 +237,35 @@ router.post('/update-email', async (req, res) => {
 
 // Update password
 router.post('/update-password', async (req, res) => {
-  if (!req.user) {
-    return res.status(401).json({ message: 'Not authenticated' });
-  }
-
+  const { currentPassword, newPassword } = req.body;
   try {
-    const { currentPassword, newPassword } = req.body;
-    if (!currentPassword || !newPassword) {
-      return res.status(400).json({ message: 'Current and new passwords are required.' });
-    }
-
-    const user = await User.findById(req.user._id);
+    const user = await User.findById(req.user.id);
     if (!user) {
-      return res.status(404).json({ message: 'User not found.' });
+      return res.status(404).json({ message: 'User not found' });
     }
 
+    // Verify current password
     const isMatch = await bcrypt.compare(currentPassword, user.password);
     if (!isMatch) {
-      return res.status(401).json({ message: 'Current password is incorrect.' });
+      return res.status(400).json({ message: 'Current password is incorrect' });
     }
 
-    user.password = await bcrypt.hash(newPassword, 10);
-    await user.save();
+    // Hash new password with the same salt rounds as reset-password (10)
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
 
-    res.status(200).json({ message: 'Password updated successfully.' });
-  } catch (err) {
-    console.error('Error updating password:', err.message);
-    res.status(500).json({ message: 'Failed to update password.', error: err.message });
+    // Use updateOne to bypass the pre-save hook
+    await User.updateOne(
+      { _id: user._id },
+      { $set: { password: hashedPassword } }
+    );
+
+    res.json({ message: 'Password updated successfully' });
+  } catch (error) {
+    console.error('Error in update-password:', error);
+    res.status(500).json({ message: 'Server error', error: 'Failed to update password' });
   }
 });
+
 
 // Delete account
 router.post('/delete-account', async (req, res) => {
