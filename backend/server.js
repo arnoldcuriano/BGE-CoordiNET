@@ -11,7 +11,7 @@ const userManagementRoutes = require('./routes/auth/userManagement');
 const MongoStore = require('connect-mongo');
 const https = require('https');
 const fs = require('fs');
-const multer = require('multer');
+const multer = require('multer'); 
 
 const app = express();
 
@@ -55,7 +55,7 @@ app.use(
 );
 
 // Initialize Passport.js for authentication
-require('./passport'); /
+require('./passport'); 
 app.use(passport.initialize());
 app.use(passport.session());
 
