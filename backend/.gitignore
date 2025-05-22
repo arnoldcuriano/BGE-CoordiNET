@@ -1,2 +1,7 @@
 .env
 node_modules/
+# Ignore private key files
+*.pem
+
+# Ignore configuration file for S3 storage
+backend/s3config.js

@@ -13,7 +13,7 @@ const VerifyEmail = () => {
   useEffect(() => {
     const verifyEmail = async () => {
       try {
-        const response = await axios.get(`http://localhost:5000/auth/verify-email/${token}`);
+        const response = await axios.get(`/auth/verify-email/${token}`);
         setSuccess(response.data.message);
         setTimeout(() => navigate('/login'), 3000);
       } catch (error) {

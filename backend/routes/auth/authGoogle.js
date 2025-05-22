@@ -10,21 +10,17 @@ router.get(
   '/google/callback',
   passport.authenticate('google', { 
     failureRedirect: 'http://localhost:3000/login',
-    failureFlash: true 
+    failureFlash: true,
+    session: false // Disable session storage to align with JWT usage
   }),
   (req, res) => {
-    console.log('Successful Google auth, user:', req.user);
-    console.log('Session before redirect:', req.session);
     req.session.save((err) => {
       if (err) {
         console.error('Error saving session after Google auth:', err);
         return res.redirect('http://localhost:3000/login');
       }
-      console.log('Session saved successfully:', req.session);
-      const redirectUrl = req.user.role === 'viewer' 
-        ? 'http://localhost:3000/welcome?loginSuccess=true' 
-        : 'http://localhost:3000/dashboard?loginSuccess=true';
-      res.redirect(redirectUrl);
+      // Redirect all users to /welcome; frontend will handle further redirection
+      res.redirect('http://localhost:3000/welcome?loginSuccess=true');
     });
   }
 );

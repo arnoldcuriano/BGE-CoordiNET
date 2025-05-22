@@ -72,7 +72,7 @@ const ResetPassword = () => {
         return;
       }
       try {
-        const response = await axios.post('http://localhost:5000/auth/validate-reset-token', { token });
+        const response = await axios.post('/auth/validate-reset-token', { token });
         if (!response.data.valid) {
           setError('Invalid or expired token');
         }
@@ -96,7 +96,7 @@ const ResetPassword = () => {
     }
 
     try {
-      const response = await axios.post('http://localhost:5000/auth/reset-password', { token, newPassword: password });
+      const response = await axios.post('/auth/reset-password', { token, newPassword: password });
       setMessage(response.data.message);
       setTimeout(() => navigate('/login'), 2000);
     } catch (err) {

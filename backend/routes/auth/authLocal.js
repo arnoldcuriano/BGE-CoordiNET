@@ -3,25 +3,14 @@ const router = express.Router();
 const passport = require('passport');
 const User = require('../../models/User');
 const bcrypt = require('bcrypt');
-const jwt = require('jsonwebtoken');
 const nodemailer = require('nodemailer');
 
-// Allowed domains for registration
+// Allowed email domains
 const allowedDomains = ['bgecorp.com', 'beglobalecommercecorp.com'];
 
 // Local Login
 router.post('/login', (req, res, next) => {
-  const { rememberMe } = req.body;
-  console.log('Login request received, rememberMe:', rememberMe);
-
-  if (rememberMe) {
-    req.session.cookie.maxAge = 30 * 24 * 60 * 60 * 1000;
-    console.log('Setting session cookie maxAge to 30 days');
-  } else {
-    req.session.cookie.expires = false;
-    console.log('Setting session cookie to expire on browser close');
-  }
-
+  console.log('Login attempt for email:', req.body.email);
   passport.authenticate('local', (err, user, info) => {
     if (err) {
       console.error('Passport authentication error:', err);
@@ -29,7 +18,6 @@ router.post('/login', (req, res, next) => {
     }
     if (!user) {
       console.log('Authentication failed:', info.message);
-      // Customize the message for unapproved users
       if (info.message === 'Your account is awaiting approval.') {
         return res.status(403).json({ message: info.message });
       }
@@ -42,7 +30,14 @@ router.post('/login', (req, res, next) => {
         return next(loginErr);
       }
 
-      console.log('User authenticated successfully:', user.email);
+      console.log('User logged in:', user.email);
+      console.log('Session after login:', req.session);
+
+      res.on('finish', () => {
+        const setCookieHeader = res.get('Set-Cookie');
+        console.log('Set-Cookie header after /login:', setCookieHeader);
+      });
+
       res.json({ 
         user: {
           id: user._id,
@@ -53,11 +48,14 @@ router.post('/login', (req, res, next) => {
           profilePicture: user.profilePicture,
           accessPermissions: user.accessPermissions,
         },
-        // Let the frontend handle the redirect
         message: 'Login successful'
       });
     });
   })(req, res, next);
+});
+
+router.get('/health', (req, res) => {
+  res.status(200).json({ status: 'healthy' });
 });
 
 // Register route
@@ -65,18 +63,15 @@ router.post('/register', async (req, res) => {
   const { firstName, lastName, email, password } = req.body;
 
   try {
-    console.log('Register request received:', { firstName, lastName, email });
+    // Check domain restriction
+    const domain = email.split('@')[1];
+    if (!allowedDomains.includes(domain)) {
+      return res.status(400).json({ message: 'Invalid email domain. Only specific domains are allowed.' });
+    }
 
     const existingUser = await User.findOne({ email });
     if (existingUser) {
-      console.log('User already exists:', email);
       return res.status(400).json({ message: 'User already exists' });
-    }
-
-    const domain = email.split('@')[1];
-    if (!allowedDomains.includes(domain)) {
-      console.log('Domain not allowed:', domain);
-      return res.status(403).json({ message: 'Registration is restricted to allowed domains' });
     }
 
     const user = new User({
@@ -89,18 +84,10 @@ router.post('/register', async (req, res) => {
     });
 
     await user.save();
-    console.log('User saved successfully:', email);
-
-    try {
-      await notifySuperadmin(email);
-      console.log('Superadmin notified for user:', email);
-    } catch (emailError) {
-      console.error('Failed to notify superadmin:', emailError.message);
-    }
 
     res.status(201).json({ message: 'User registered successfully, awaiting approval' });
   } catch (error) {
-    console.error('Register error:', error.message);
+    console.error('Error registering user:', error);
     res.status(500).json({ message: 'Server error during registration', error: error.message });
   }
 });
@@ -109,7 +96,7 @@ router.post('/register', async (req, res) => {
 router.get('/logout', (req, res) => {
   req.logout((err) => {
     if (err) {
-      console.error('Logout error:', err);
+      console.error('Error logging out:', err);
       return res.status(500).json({ message: 'Error logging out' });
     }
     req.session.destroy((err) => {
@@ -117,36 +104,10 @@ router.get('/logout', (req, res) => {
         console.error('Error destroying session:', err);
         return res.status(500).json({ message: 'Error destroying session' });
       }
-      console.log('Session destroyed successfully');
       res.clearCookie('connect.sid', { path: '/', sameSite: 'lax', httpOnly: true });
       res.status(200).json({ message: 'Logged out successfully' });
     });
   });
 });
-
-async function notifySuperadmin(newUserEmail) {
-  try {
-    const transporter = nodemailer.createTransport({
-      host: 'smtp.mailtrap.io',
-      port: 2525,
-      auth: {
-        user: process.env.MAILTRAP_USER,
-        pass: process.env.MAILTRAP_PASS,
-      },
-    });
-
-    const mailOptions = {
-      from: '"BGE App" <support@beglobalecommercecorp.com>',
-      to: process.env.SUPERADMIN_EMAIL,
-      subject: 'New User Registration Requires Approval',
-      text: `A new user with email ${newUserEmail} has registered and is awaiting approval.`,
-    };
-
-    await transporter.sendMail(mailOptions);
-    console.log('Superadmin notification sent successfully to:', process.env.SUPERADMIN_EMAIL);
-  } catch (error) {
-    console.error('Error in notifySuperadmin:', error.message);
-  }
-}
 
 module.exports = router;

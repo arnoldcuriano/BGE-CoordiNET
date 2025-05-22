@@ -6,8 +6,6 @@ import {
   Typography,
   Button,
   CircularProgress,
-  Snackbar,
-  Alert,
   Modal,
   Checkbox,
   FormControlLabel,
@@ -34,9 +32,9 @@ import CancelIcon from '@mui/icons-material/Cancel';
 import Layout from '../components/Layout';
 import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
-import { useTheme } from '../context/ThemeContext'
+import { useTheme } from '../context/ThemeContext';
+import CustomSnackbar from '../components/CustomSnackbar';
 
-// Define animations (same as Login.js)
 const fadeIn = keyframes`
   from {
     opacity: 0;
@@ -70,17 +68,21 @@ const SuperAdminDashboard = () => {
   const [selectedApproved, setSelectedApproved] = useState([]);
 
   const [loading, setLoading] = useState(true);
-  const [actionLoading, setActionLoading] = useState({}); // Per-action loading state
-  const [bulkLoading, setBulkLoading] = useState(false); // For bulk actions
+  const [actionLoading, setActionLoading] = useState({});
+  const [bulkLoading, setBulkLoading] = useState(false);
   const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' });
   const [openModal, setOpenModal] = useState(false);
   const [selectedMember, setSelectedMember] = useState(null);
   const [tempPermissions, setTempPermissions] = useState({});
-  const [selectedRole, setSelectedRole] = useState('viewer');
+  const [selectedRoles, setSelectedRoles] = useState({});
 
-  // Modal states for confirmations
   const [deleteConfirmModal, setDeleteConfirmModal] = useState({ open: false, userId: null, userName: '' });
   const [approveConfirmModal, setApproveConfirmModal] = useState({ open: false, userId: null, userName: '', role: '' });
+  const [rejectConfirmModal, setRejectConfirmModal] = useState({ open: false, userId: null, userName: '' });
+
+  const greenLightColor = '#34A853';
+  const greenLightHoverBackground = 'rgba(52, 168, 83, 0.1)';
+  const hoverBackground = isDarkMode ? 'rgba(255, 255, 255, 0.15)' : greenLightHoverBackground;
 
   const user = authState.isAuthenticated
     ? {
@@ -90,11 +92,6 @@ const SuperAdminDashboard = () => {
         profilePicture: authState.profilePicture,
       }
     : null;
-
-  // Log theme changes for debugging
-  console.log('SuperAdminDashboard: isDarkMode:', isDarkMode);
-  console.log('SuperAdminDashboard: muiTheme text.primary:', muiTheme.palette.text.primary);
-  console.log('SuperAdminDashboard: muiTheme text.secondary:', muiTheme.palette.text.secondary);
 
   useEffect(() => {
     if (!authState.isAuthenticated || authState.userRole !== 'superadmin') {
@@ -106,21 +103,17 @@ const SuperAdminDashboard = () => {
       try {
         setLoading(true);
         const [pendingResponse, approvedResponse] = await Promise.all([
-          axios.get('http://localhost:5000/auth/pending-users', { withCredentials: true }),
-          axios.get('http://localhost:5000/auth/members', { withCredentials: true }),
+          axios.get('/auth/pending-users', { withCredentials: true }),
+          axios.get('/auth/members', { withCredentials: true }),
         ]);
 
-        if (!Array.isArray(pendingResponse.data)) {
-          throw new Error('Invalid data format from /auth/pending-users');
-        }
+        if (!Array.isArray(pendingResponse.data)) throw new Error('Invalid data format from /auth/pending-users');
         const filteredPendingMembers = pendingResponse.data.filter(
           (member) => member && typeof member === 'object' && member._id
         );
         setPendingMembers(filteredPendingMembers);
 
-        if (!Array.isArray(approvedResponse.data)) {
-          throw new Error('Invalid data format from /auth/members');
-        }
+        if (!Array.isArray(approvedResponse.data)) throw new Error('Invalid data format from /auth/members');
         const filteredApprovedMembers = approvedResponse.data.filter(
           (member) => member && typeof member === 'object' && member._id
         );
@@ -138,7 +131,6 @@ const SuperAdminDashboard = () => {
     fetchData();
   }, [authState, navigate]);
 
-  // Sorting and filtering logic
   const sortData = (data, sortField, sortOrder, getValue) => {
     return [...data].sort((a, b) => {
       let valueA = getValue(a);
@@ -233,7 +225,7 @@ const SuperAdminDashboard = () => {
     }
   };
 
-  const handleApproveMember = async (userId) => {
+  const handleApproveMember = async (userId, role) => {
     try {
       setActionLoading((prev) => ({ ...prev, [userId]: true }));
       const roleDefaults = {
@@ -263,25 +255,25 @@ const SuperAdminDashboard = () => {
       setSelectedPending((prev) => prev.filter((id) => id !== userId));
       setApprovedMembers((prev) => [
         ...prev,
-        { ...memberToApprove, role: selectedRole, accessPermissions: roleDefaults[selectedRole] },
+        { ...memberToApprove, role, accessPermissions: roleDefaults[role] },
       ]);
 
       await axios.post(
-        'http://localhost:5000/auth/approve-user',
-        { userId, role: selectedRole, accessPermissions: roleDefaults[selectedRole] },
+        '/auth/approve-user',
+        { userId, role, accessPermissions: roleDefaults[role] },
         { withCredentials: true }
       );
 
       setSnackbar({
         open: true,
-        message: `User approved as ${selectedRole}. Customize permissions if needed.`,
+        message: `User approved as ${role}. Customize permissions if needed.`,
         severity: 'success',
       });
     } catch (error) {
       console.error('Error approving member:', error.response?.data || error.message);
       setSnackbar({ open: true, message: 'Failed to approve member', severity: 'error' });
-      const fetchApproved = await axios.get('http://localhost:5000/auth/members', { withCredentials: true });
-      const fetchPending = await axios.get('http://localhost:5000/auth/pending-users', { withCredentials: true });
+      const fetchApproved = await axios.get('/auth/members', { withCredentials: true });
+      const fetchPending = await axios.get('/auth/pending-users', { withCredentials: true });
       setApprovedMembers(fetchApproved.data.filter((m) => m && typeof m === 'object' && m._id));
       setPendingMembers(fetchPending.data.filter((m) => m && typeof m === 'object' && m._id));
     } finally {
@@ -318,13 +310,14 @@ const SuperAdminDashboard = () => {
       };
 
       const membersToApprove = pendingMembers.filter((m) => selectedPending.includes(m._id));
+      const defaultRole = 'viewer';
       setPendingMembers((prev) => prev.filter((m) => !selectedPending.includes(m._id)));
       setApprovedMembers((prev) => [
         ...prev,
         ...membersToApprove.map((m) => ({
           ...m,
-          role: selectedRole,
-          accessPermissions: roleDefaults[selectedRole],
+          role: selectedRoles[m._id] || defaultRole,
+          accessPermissions: roleDefaults[selectedRoles[m._id] || defaultRole],
         })),
       ]);
       setSelectedPending([]);
@@ -332,8 +325,12 @@ const SuperAdminDashboard = () => {
       await Promise.all(
         selectedPending.map((userId) =>
           axios.post(
-            'http://localhost:5000/auth/approve-user',
-            { userId, role: selectedRole, accessPermissions: roleDefaults[selectedRole] },
+            '/auth/approve-user',
+            {
+              userId,
+              role: selectedRoles[userId] || defaultRole,
+              accessPermissions: roleDefaults[selectedRoles[userId] || defaultRole],
+            },
             { withCredentials: true }
           )
         )
@@ -341,14 +338,14 @@ const SuperAdminDashboard = () => {
 
       setSnackbar({
         open: true,
-        message: `${selectedPending.length} members approved as ${selectedRole}`,
+        message: `${selectedPending.length} members approved`,
         severity: 'success',
       });
     } catch (error) {
       console.error('Error bulk approving members:', error.response?.data || error.message);
       setSnackbar({ open: true, message: 'Failed to approve members', severity: 'error' });
-      const fetchApproved = await axios.get('http://localhost:5000/auth/members', { withCredentials: true });
-      const fetchPending = await axios.get('http://localhost:5000/auth/pending-users', { withCredentials: true });
+      const fetchApproved = await axios.get('/auth/members', { withCredentials: true });
+      const fetchPending = await axios.get('/auth/pending-users', { withCredentials: true });
       setApprovedMembers(fetchApproved.data.filter((m) => m && typeof m === 'object' && m._id));
       setPendingMembers(fetchPending.data.filter((m) => m && typeof m === 'object' && m._id));
     } finally {
@@ -362,7 +359,7 @@ const SuperAdminDashboard = () => {
       setPendingMembers((prev) => prev.filter((member) => member._id !== userId));
       setSelectedPending((prev) => prev.filter((id) => id !== userId));
       const response = await axios.post(
-        'http://localhost:5000/auth/reject-user',
+        '/auth/reject-user',
         { userId },
         { withCredentials: true }
       );
@@ -370,10 +367,11 @@ const SuperAdminDashboard = () => {
     } catch (error) {
       console.error('Error rejecting member:', error.response?.data || error.message);
       setSnackbar({ open: true, message: 'Failed to reject member', severity: 'error' });
-      const fetchPending = await axios.get('http://localhost:5000/auth/pending-users', { withCredentials: true });
+      const fetchPending = await axios.get('/auth/pending-users', { withCredentials: true });
       setPendingMembers(fetchPending.data.filter((m) => m && typeof m === 'object' && m._id));
     } finally {
       setActionLoading((prev) => ({ ...prev, [userId]: false }));
+      setRejectConfirmModal({ open: false, userId: null, userName: '' });
     }
   };
 
@@ -388,14 +386,14 @@ const SuperAdminDashboard = () => {
       setSelectedPending([]);
       await Promise.all(
         selectedPending.map((userId) =>
-          axios.post('http://localhost:5000/auth/reject-user', { userId }, { withCredentials: true })
+          axios.post('/auth/reject-user', { userId }, { withCredentials: true })
         )
       );
       setSnackbar({ open: true, message: `${selectedPending.length} members rejected`, severity: 'success' });
     } catch (error) {
       console.error('Error bulk rejecting members:', error.response?.data || error.message);
       setSnackbar({ open: true, message: 'Failed to reject members', severity: 'error' });
-      const fetchPending = await axios.get('http://localhost:5000/auth/pending-users', { withCredentials: true });
+      const fetchPending = await axios.get('/auth/pending-users', { withCredentials: true });
       setPendingMembers(fetchPending.data.filter((m) => m && typeof m === 'object' && m._id));
     } finally {
       setBulkLoading(false);
@@ -423,7 +421,7 @@ const SuperAdminDashboard = () => {
       setApprovedMembers((prev) => prev.filter((m) => m._id !== userId));
       setSelectedApproved((prev) => prev.filter((id) => id !== userId));
 
-      await axios.delete(`http://localhost:5000/auth/delete-user/${userId}`, { withCredentials: true });
+      await axios.delete(`/auth/delete-user/${userId}`, { withCredentials: true });
 
       setSnackbar({
         open: true,
@@ -433,7 +431,7 @@ const SuperAdminDashboard = () => {
     } catch (error) {
       console.error('Error deleting member:', error.response?.data || error.message);
       setSnackbar({ open: true, message: 'Failed to delete member', severity: 'error' });
-      const fetchApproved = await axios.get('http://localhost:5000/auth/members', { withCredentials: true });
+      const fetchApproved = await axios.get('/auth/members', { withCredentials: true });
       setApprovedMembers(fetchApproved.data.filter((m) => m && typeof m === 'object' && m._id));
     } finally {
       setActionLoading((prev) => ({ ...prev, [userId]: false }));
@@ -454,7 +452,7 @@ const SuperAdminDashboard = () => {
     try {
       setActionLoading((prev) => ({ ...prev, [selectedMember._id]: true }));
       await axios.put(
-        'http://localhost:5000/auth/update-access',
+        '/auth/update-access',
         { userId: selectedMember._id, accessPermissions: tempPermissions },
         { withCredentials: true }
       );
@@ -463,7 +461,7 @@ const SuperAdminDashboard = () => {
           m._id === selectedMember._id ? { ...m, accessPermissions: tempPermissions } : m
         )
       );
-      setSnackbar({ open: true, message: 'Access updated successfully. User may need to log out and back in.', severity: 'success' });
+      setSnackbar({ open: true, message: 'Access updated successfully', severity: 'success' });
       handleCloseModal();
     } catch (error) {
       console.error('Error updating access:', error.response?.data || error.message);
@@ -494,7 +492,7 @@ const SuperAdminDashboard = () => {
           const member = approvedMembers.find((m) => m._id === userId);
           const updatedPermissions = { ...member.accessPermissions, [page]: checked };
           return axios.put(
-            'http://localhost:5000/auth/update-access',
+            '/auth/update-access',
             { userId, accessPermissions: updatedPermissions },
             { withCredentials: true }
           );
@@ -509,7 +507,7 @@ const SuperAdminDashboard = () => {
       );
       setSnackbar({
         open: true,
-        message: `Updated ${page} access for ${selectedApproved.length} members. Users may need to log out and back in.`,
+        message: `Updated ${page} access for ${selectedApproved.length} members`,
         severity: 'success',
       });
     } catch (error) {
@@ -550,6 +548,14 @@ const SuperAdminDashboard = () => {
     setApproveConfirmModal({ open: false, userId: null, userName: '', role: '' });
   };
 
+  const handleOpenRejectConfirm = (userId, userName) => {
+    setRejectConfirmModal({ open: true, userId, userName });
+  };
+
+  const handleCloseRejectConfirm = () => {
+    setRejectConfirmModal({ open: false, userId: null, userName: '' });
+  };
+
   if (loading) {
     return (
       <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
@@ -571,7 +577,7 @@ const SuperAdminDashboard = () => {
   return (
     <Layout user={user}>
       <Box
-        key={isDarkMode ? 'dark' : 'light'} // Force re-render on theme change
+        key={isDarkMode ? 'dark' : 'light'}
         sx={{
           minHeight: '100vh',
           background: muiTheme.custom.gradients.backgroundDefault,
@@ -581,7 +587,6 @@ const SuperAdminDashboard = () => {
           animation: `${fadeIn} 0.8s ease-out`,
         }}
       >
-        {/* Subtle Gradient Overlay */}
         <Box
           sx={{
             position: 'absolute',
@@ -590,18 +595,12 @@ const SuperAdminDashboard = () => {
             width: '100%',
             height: '100%',
             background: isDarkMode
-              ? 'radial-gradient(circle at 30% 30%, rgba(66, 133, 244, 0.2) 0%, transparent 70%)'
+              ? 'radial-gradient(circle at 30% 30%, rgba(66, 133, 244, 0.2) 0%, transparent 100%)'
               : 'radial-gradient(circle at 30% 30%, rgba(52, 168, 83, 0.2) 0%, transparent 70%)',
             zIndex: 0,
           }}
         />
-        {/* Main Content */}
-        <Box
-          sx={{
-            position: 'relative',
-            zIndex: 1,
-          }}
-        >
+        <Box sx={{ position: 'relative', zIndex: 1 }}>
           <Toolbar />
           <Typography
             variant="h4"
@@ -614,6 +613,7 @@ const SuperAdminDashboard = () => {
           >
             Super Admin Dashboard
           </Typography>
+          {/* Dashboard Stats */}
           <Box sx={{ display: 'flex', gap: 3, flexWrap: 'wrap', mb: 4 }}>
             <Box
               sx={{
@@ -624,29 +624,14 @@ const SuperAdminDashboard = () => {
                 boxShadow: muiTheme.custom.shadows.paper,
                 border: `1px solid ${muiTheme.palette.border.main}`,
                 flex: '1 1 300px',
-                transition: 'transform 0.3s ease',
-                '&:hover': {
-                  transform: 'translateY(-5px)',
-                },
+                transition: 'transform 0.3s ease, background-color 0.3s ease',
+                '&:hover': { transform: 'translateY(-5px)', backgroundColor: hoverBackground },
               }}
             >
-              <Typography
-                variant="h6"
-                sx={{
-                  fontFamily: muiTheme.typography.fontFamily,
-                  color: muiTheme.palette.text.secondary,
-                }}
-              >
+              <Typography variant="h6" sx={{ fontFamily: muiTheme.typography.fontFamily, color: muiTheme.palette.text.secondary }}>
                 Total Members
               </Typography>
-              <Typography
-                variant="h4"
-                sx={{
-                  mt: 1,
-                  color: muiTheme.palette.primary.main,
-                  fontFamily: muiTheme.typography.fontFamily,
-                }}
-              >
+              <Typography variant="h4" sx={{ mt: 1, color: muiTheme.palette.primary.main, fontFamily: muiTheme.typography.fontFamily }}>
                 {approvedMembers.length}
               </Typography>
             </Box>
@@ -659,29 +644,14 @@ const SuperAdminDashboard = () => {
                 boxShadow: muiTheme.custom.shadows.paper,
                 border: `1px solid ${muiTheme.palette.border.main}`,
                 flex: '1 1 300px',
-                transition: 'transform 0.3s ease',
-                '&:hover': {
-                  transform: 'translateY(-5px)',
-                },
+                transition: 'transform 0.3s ease, background-color 0.3s ease',
+                '&:hover': { transform: 'translateY(-5px)', backgroundColor: hoverBackground },
               }}
             >
-              <Typography
-                variant="h6"
-                sx={{
-                  fontFamily: muiTheme.typography.fontFamily,
-                  color: muiTheme.palette.text.secondary,
-                }}
-              >
+              <Typography variant="h6" sx={{ fontFamily: muiTheme.typography.fontFamily, color: muiTheme.palette.text.secondary }}>
                 Pending Approvals
               </Typography>
-              <Typography
-                variant="h4"
-                sx={{
-                  mt: 1,
-                  color: muiTheme.palette.primary.main,
-                  fontFamily: muiTheme.typography.fontFamily,
-                }}
-              >
+              <Typography variant="h4" sx={{ mt: 1, color: muiTheme.palette.primary.main, fontFamily: muiTheme.typography.fontFamily }}>
                 {pendingMembers.length}
               </Typography>
             </Box>
@@ -694,33 +664,19 @@ const SuperAdminDashboard = () => {
                 boxShadow: muiTheme.custom.shadows.paper,
                 border: `1px solid ${muiTheme.palette.border.main}`,
                 flex: '1 1 300px',
-                transition: 'transform 0.3s ease',
-                '&:hover': {
-                  transform: 'translateY(-5px)',
-                },
+                transition: 'transform 0.3s ease, background-color 0.3s ease',
+                '&:hover': { transform: 'translateY(-5px)', backgroundColor: hoverBackground },
               }}
             >
-              <Typography
-                variant="h6"
-                sx={{
-                  fontFamily: muiTheme.typography.fontFamily,
-                  color: muiTheme.palette.text.secondary,
-                }}
-              >
+              <Typography variant="h6" sx={{ fontFamily: muiTheme.typography.fontFamily, color: muiTheme.palette.text.secondary }}>
                 Recent Activity
               </Typography>
-              <Typography
-                variant="body1"
-                sx={{
-                  mt: 1,
-                  fontFamily: muiTheme.typography.fontFamily,
-                  color: muiTheme.palette.text.primary,
-                }}
-              >
+              <Typography variant="body1" sx={{ mt: 1, fontFamily: muiTheme.typography.fontFamily, color: muiTheme.palette.text.primary }}>
                 Last login: 5 minutes ago
               </Typography>
             </Box>
           </Box>
+          {/* Pending Members Section */}
           <Typography
             variant="h5"
             gutterBottom
@@ -747,33 +703,14 @@ const SuperAdminDashboard = () => {
                       borderRadius: '8px',
                       background: muiTheme.palette.background.listItem,
                       transition: 'all 0.3s ease',
-                      '& fieldset': {
-                        borderColor: muiTheme.palette.border.main,
-                      },
-                      '&:hover fieldset': {
-                        borderColor: muiTheme.palette.secondary.main,
-                      },
-                      '&:hover': {
-                        transform: 'translateY(-2px)',
-                        boxShadow: muiTheme.custom?.shadow?.listItem,
-                      },
-                      '&.Mui-focused fieldset': {
-                        borderColor: muiTheme.palette.secondary.main,
-                        boxShadow: `0 0 8px ${muiTheme.palette.secondary.main}33`,
-                      },
-                      '&.Mui-focused': {
-                        transform: 'translateY(-2px)',
-                        boxShadow: muiTheme.custom?.shadow?.listItem,
-                      },
+                      '& fieldset': { borderColor: muiTheme.palette.border.main },
+                      '&:hover fieldset': { borderColor: greenLightColor },
+                      '&:hover': { transform: 'translateY(-2px)', boxShadow: muiTheme.custom?.shadow?.listItem },
+                      '&.Mui-focused fieldset': { borderColor: greenLightColor, boxShadow: `0 0 8px ${greenLightColor}33` },
+                      '&.Mui-focused': { transform: 'translateY(-2px)', boxShadow: muiTheme.custom?.shadow?.listItem },
                     },
-                    '& .MuiInputLabel-root': {
-                      fontFamily: muiTheme.typography.fontFamily,
-                      color: muiTheme.palette.text.secondary,
-                    },
-                    '& .MuiInputBase-input': {
-                      fontFamily: muiTheme.typography.fontFamily,
-                      color: muiTheme.palette.text.primary,
-                    },
+                    '& .MuiInputLabel-root': { fontFamily: muiTheme.typography.fontFamily, color: muiTheme.palette.text.secondary },
+                    '& .MuiInputBase-input': { fontFamily: muiTheme.typography.fontFamily, color: muiTheme.palette.text.primary },
                   }}
                 />
                 <Tooltip title="Approve selected members">
@@ -788,15 +725,8 @@ const SuperAdminDashboard = () => {
                       transition: 'all 0.3s ease',
                       background: 'linear-gradient(90deg, #4285F4, #34A853)',
                       color: '#ffffff',
-                      '&:hover': {
-                        transform: 'scale(1.05)',
-                        background: 'linear-gradient(90deg, #34A853, #4285F4)',
-                        boxShadow: muiTheme.custom.shadows.buttonHover,
-                      },
-                      '&:disabled': {
-                        background: 'linear-gradient(90deg, #4285F4, #34A853)',
-                        opacity: 0.6,
-                      },
+                      '&:hover': { transform: 'scale(1.05)', background: 'linear-gradient(90deg, #34A853, #4285F4)', boxShadow: muiTheme.custom.shadows.buttonHover },
+                      '&:disabled': { background: 'linear-gradient(90deg, #4285F4, #34A853)', opacity: 0.6 },
                     }}
                   >
                     {bulkLoading ? <CircularProgress size={24} color="inherit" /> : `Approve Selected (${selectedPending.length})`}
@@ -812,11 +742,7 @@ const SuperAdminDashboard = () => {
                       fontFamily: muiTheme.typography.fontFamily,
                       borderRadius: '8px',
                       transition: 'all 0.3s ease',
-                      '&:hover': {
-                        transform: 'scale(1.05)',
-                        backgroundColor: muiTheme.palette.error.dark,
-                        boxShadow: muiTheme.custom.shadows.buttonHover,
-                      },
+                      '&:hover': { transform: 'scale(1.05)', backgroundColor: muiTheme.palette.error.dark, boxShadow: muiTheme.custom.shadows.buttonHover },
                     }}
                   >
                     {bulkLoading ? <CircularProgress size={24} color="inherit" /> : `Reject Selected (${selectedPending.length})`}
@@ -856,82 +782,29 @@ const SuperAdminDashboard = () => {
                   <Table sx={{ minWidth: 650 }} aria-label="pending members table">
                     <TableHead>
                       <TableRow>
-                        <TableCell
-                          sx={{
-                            fontFamily: muiTheme.typography.fontFamily,
-                            background: muiTheme.custom.gradients.listItem,
-                            color: muiTheme.palette.primary.main,
-                            fontWeight: 'bold',
-                          }}
-                        >
+                        <TableCell sx={{ fontFamily: muiTheme.typography.fontFamily, background: muiTheme.custom.gradients.listItem, color: muiTheme.palette.primary.main, fontWeight: 'bold' }}>
                           <Checkbox
                             checked={selectedPending.length === filteredPendingMembers.length && filteredPendingMembers.length > 0}
                             onChange={handleSelectAllPending}
-                            sx={{
-                              color: muiTheme.palette.text.primary,
-                              '&.Mui-checked': { color: muiTheme.palette.secondary.main },
-                            }}
+                            sx={{ color: muiTheme.palette.text.primary, '&.Mui-checked': { color: greenLightColor } }}
                           />
                         </TableCell>
-                        <TableCell
-                          sx={{
-                            fontFamily: muiTheme.typography.fontFamily,
-                            background: muiTheme.custom.gradients.listItem,
-                            color: muiTheme.palette.primary.main,
-                            fontWeight: 'bold',
-                          }}
-                        >
-                          <TableSortLabel
-                            active={pendingSortField === 'name'}
-                            direction={pendingSortOrder}
-                            onClick={() => handlePendingSort('name')}
-                            sx={{ color: muiTheme.palette.primary.main }}
-                          >
+                        <TableCell sx={{ fontFamily: muiTheme.typography.fontFamily, background: muiTheme.custom.gradients.listItem, color: muiTheme.palette.primary.main, fontWeight: 'bold' }}>
+                          <TableSortLabel active={pendingSortField === 'name'} direction={pendingSortOrder} onClick={() => handlePendingSort('name')} sx={{ color: muiTheme.palette.primary.main, '&:hover': { color: greenLightColor } }}>
                             Name
                           </TableSortLabel>
                         </TableCell>
-                        <TableCell
-                          sx={{
-                            fontFamily: muiTheme.typography.fontFamily,
-                            background: muiTheme.custom.gradients.listItem,
-                            color: muiTheme.palette.primary.main,
-                            fontWeight: 'bold',
-                          }}
-                        >
-                          <TableSortLabel
-                            active={pendingSortField === 'email'}
-                            direction={pendingSortOrder}
-                            onClick={() => handlePendingSort('email')}
-                            sx={{ color: muiTheme.palette.primary.main }}
-                          >
+                        <TableCell sx={{ fontFamily: muiTheme.typography.fontFamily, background: muiTheme.custom.gradients.listItem, color: muiTheme.palette.primary.main, fontWeight: 'bold' }}>
+                          <TableSortLabel active={pendingSortField === 'email'} direction={pendingSortOrder} onClick={() => handlePendingSort('email')} sx={{ color: muiTheme.palette.primary.main, '&:hover': { color: greenLightColor } }}>
                             Email
                           </TableSortLabel>
                         </TableCell>
-                        <TableCell
-                          sx={{
-                            fontFamily: muiTheme.typography.fontFamily,
-                            background: muiTheme.custom.gradients.listItem,
-                            color: muiTheme.palette.primary.main,
-                            fontWeight: 'bold',
-                          }}
-                        >
-                          <TableSortLabel
-                            active={pendingSortField === 'createdAt'}
-                            direction={pendingSortOrder}
-                            onClick={() => handlePendingSort('createdAt')}
-                            sx={{ color: muiTheme.palette.primary.main }}
-                          >
+                        <TableCell sx={{ fontFamily: muiTheme.typography.fontFamily, background: muiTheme.custom.gradients.listItem, color: muiTheme.palette.primary.main, fontWeight: 'bold' }}>
+                          <TableSortLabel active={pendingSortField === 'createdAt'} direction={pendingSortOrder} onClick={() => handlePendingSort('createdAt')} sx={{ color: muiTheme.palette.primary.main, '&:hover': { color: greenLightColor } }}>
                             Created At
                           </TableSortLabel>
                         </TableCell>
-                        <TableCell
-                          sx={{
-                            fontFamily: muiTheme.typography.fontFamily,
-                            background: muiTheme.custom.gradients.listItem,
-                            color: muiTheme.palette.primary.main,
-                            fontWeight: 'bold',
-                          }}
-                        >
+                        <TableCell sx={{ fontFamily: muiTheme.typography.fontFamily, background: muiTheme.custom.gradients.listItem, color: muiTheme.palette.primary.main, fontWeight: 'bold' }}>
                           Actions
                         </TableCell>
                       </TableRow>
@@ -943,7 +816,7 @@ const SuperAdminDashboard = () => {
                           <TableRow
                             key={member._id}
                             sx={{
-                              '&:hover': { backgroundColor: muiTheme.custom.gradients.listItemHover },
+                              '&:hover': { backgroundColor: hoverBackground },
                               backgroundColor: index % 2 === 0 ? 'transparent' : isDarkMode ? 'rgba(255, 255, 255, 0.02)' : 'rgba(0, 0, 0, 0.02)',
                             }}
                           >
@@ -951,10 +824,7 @@ const SuperAdminDashboard = () => {
                               <Checkbox
                                 checked={selectedPending.includes(member._id)}
                                 onChange={() => handleSelectPending(member._id)}
-                                sx={{
-                                  color: muiTheme.palette.text.primary,
-                                  '&.Mui-checked': { color: muiTheme.palette.secondary.main },
-                                }}
+                                sx={{ color: muiTheme.palette.text.primary, '&.Mui-checked': { color: greenLightColor } }}
                               />
                             </TableCell>
                             <TableCell sx={{ fontFamily: muiTheme.typography.fontFamily, color: muiTheme.palette.text.primary, py: 1.5 }}>
@@ -968,8 +838,8 @@ const SuperAdminDashboard = () => {
                             </TableCell>
                             <TableCell sx={{ fontFamily: muiTheme.typography.fontFamily, py: 1.5 }}>
                               <Select
-                                value={selectedRole}
-                                onChange={(e) => setSelectedRole(e.target.value)}
+                                value={selectedRoles[member._id] || 'viewer'}
+                                onChange={(e) => setSelectedRoles((prev) => ({ ...prev, [member._id]: e.target.value }))}
                                 size="small"
                                 sx={{
                                   mr: 1,
@@ -978,13 +848,8 @@ const SuperAdminDashboard = () => {
                                   border: `1px solid ${muiTheme.palette.border.main}`,
                                   borderRadius: '8px',
                                   fontFamily: muiTheme.typography.fontFamily,
-                                  '&:hover': {
-                                    background: muiTheme.custom.gradients.listItemHover,
-                                    borderColor: muiTheme.palette.secondary.main,
-                                  },
-                                  '& .MuiSelect-icon': {
-                                    color: muiTheme.palette.text.primary,
-                                  },
+                                  '&:hover': { background: hoverBackground, borderColor: greenLightColor },
+                                  '& .MuiSelect-icon': { color: muiTheme.palette.text.primary },
                                 }}
                               >
                                 <MenuItem value="viewer">Viewer</MenuItem>
@@ -1000,7 +865,7 @@ const SuperAdminDashboard = () => {
                                     handleOpenApproveConfirm(
                                       member._id,
                                       `${member.firstName || ''} ${member.lastName || ''}`.trim() || 'Unnamed',
-                                      selectedRole
+                                      selectedRoles[member._id] || 'viewer'
                                     )
                                   }
                                   disabled={actionLoading[member._id] || bulkLoading}
@@ -1011,15 +876,8 @@ const SuperAdminDashboard = () => {
                                     transition: 'all 0.3s ease',
                                     background: 'linear-gradient(90deg, #4285F4, #34A853)',
                                     color: '#ffffff',
-                                    '&:hover': {
-                                      transform: 'scale(1.05)',
-                                      background: 'linear-gradient(90deg, #34A853, #4285F4)',
-                                      boxShadow: muiTheme.custom.shadows.buttonHover,
-                                    },
-                                    '&:disabled': {
-                                      background: 'linear-gradient(90deg, #4285F4, #34A853)',
-                                      opacity: 0.6,
-                                    },
+                                    '&:hover': { transform: 'scale(1.05)', background: 'linear-gradient(90deg, #34A853, #4285F4)', boxShadow: muiTheme.custom.shadows.buttonHover },
+                                    '&:disabled': { background: 'linear-gradient(90deg, #4285F4, #34A853)', opacity: 0.6 },
                                   }}
                                 >
                                   {actionLoading[member._id] ? <CircularProgress size={24} color="inherit" /> : 'Approve'}
@@ -1030,17 +888,18 @@ const SuperAdminDashboard = () => {
                                   variant="contained"
                                   color="error"
                                   startIcon={<CancelIcon />}
-                                  onClick={() => handleRejectMember(member._id)}
+                                  onClick={() =>
+                                    handleOpenRejectConfirm(
+                                      member._id,
+                                      `${member.firstName || ''} ${member.lastName || ''}`.trim() || 'Unnamed'
+                                    )
+                                  }
                                   disabled={actionLoading[member._id] || bulkLoading}
                                   sx={{
                                     fontFamily: muiTheme.typography.fontFamily,
                                     borderRadius: '8px',
                                     transition: 'all 0.3s ease',
-                                    '&:hover': {
-                                      transform: 'scale(1.05)',
-                                      backgroundColor: muiTheme.palette.error.dark,
-                                      boxShadow: muiTheme.custom.shadows.buttonHover,
-                                    },
+                                    '&:hover': { transform: 'scale(1.05)', backgroundColor: muiTheme.palette.error.dark, boxShadow: muiTheme.custom.shadows.buttonHover },
                                   }}
                                 >
                                   {actionLoading[member._id] ? <CircularProgress size={24} color="inherit" /> : 'Reject'}
@@ -1063,12 +922,8 @@ const SuperAdminDashboard = () => {
                 onRowsPerPageChange={handlePendingChangeRowsPerPage}
                 sx={{
                   color: muiTheme.palette.text.primary,
-                  '& .MuiIconButton-root': {
-                    color: muiTheme.palette.text.primary,
-                  },
-                  '& .MuiSelect-icon': {
-                    color: muiTheme.palette.text.primary,
-                  },
+                  '& .MuiIconButton-root': { color: muiTheme.palette.text.primary, '&:hover': { color: greenLightColor } },
+                  '& .MuiSelect-icon': { color: muiTheme.palette.text.primary },
                 }}
               />
             </>
@@ -1077,6 +932,7 @@ const SuperAdminDashboard = () => {
               No pending approvals
             </Typography>
           )}
+          {/* Approved Members Section */}
           <Typography
             variant="h5"
             gutterBottom
@@ -1104,33 +960,14 @@ const SuperAdminDashboard = () => {
                       borderRadius: '8px',
                       background: muiTheme.palette.background.listItem,
                       transition: 'all 0.3s ease',
-                      '& fieldset': {
-                        borderColor: muiTheme.palette.border.main,
-                      },
-                      '&:hover fieldset': {
-                        borderColor: muiTheme.palette.secondary.main,
-                      },
-                      '&:hover': {
-                        transform: 'translateY(-2px)',
-                        boxShadow: muiTheme.custom?.shadow?.listItem,
-                      },
-                      '&.Mui-focused fieldset': {
-                        borderColor: muiTheme.palette.secondary.main,
-                        boxShadow: `0 0 8px ${muiTheme.palette.secondary.main}33`,
-                      },
-                      '&.Mui-focused': {
-                        transform: 'translateY(-2px)',
-                        boxShadow: muiTheme.custom?.shadow?.listItem,
-                      },
+                      '& fieldset': { borderColor: muiTheme.palette.border.main },
+                      '&:hover fieldset': { borderColor: greenLightColor },
+                      '&:hover': { transform: 'translateY(-2px)', boxShadow: muiTheme.custom?.shadow?.listItem },
+                      '&.Mui-focused fieldset': { borderColor: greenLightColor, boxShadow: `0 0 8px ${greenLightColor}33` },
+                      '&.Mui-focused': { transform: 'translateY(-2px)', boxShadow: muiTheme.custom?.shadow?.listItem },
                     },
-                    '& .MuiInputLabel-root': {
-                      fontFamily: muiTheme.typography.fontFamily,
-                      color: muiTheme.palette.text.secondary,
-                    },
-                    '& .MuiInputBase-input': {
-                      fontFamily: muiTheme.typography.fontFamily,
-                      color: muiTheme.palette.text.primary,
-                    },
+                    '& .MuiInputLabel-root': { fontFamily: muiTheme.typography.fontFamily, color: muiTheme.palette.text.secondary },
+                    '& .MuiInputBase-input': { fontFamily: muiTheme.typography.fontFamily, color: muiTheme.palette.text.primary },
                   }}
                 />
                 <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
@@ -1141,18 +978,11 @@ const SuperAdminDashboard = () => {
                           <Checkbox
                             onChange={(e) => handleBulkAccessChange(page.key, e.target.checked)}
                             disabled={selectedApproved.length === 0 || hasSuperadminSelected || bulkLoading}
-                            sx={{
-                              color: muiTheme.palette.text.primary,
-                              '&.Mui-checked': { color: muiTheme.palette.secondary.main },
-                            }}
+                            sx={{ color: muiTheme.palette.text.primary, '&.Mui-checked': { color: greenLightColor } }}
                           />
                         }
                         label={`Toggle ${page.label}`}
-                        sx={{
-                          fontFamily: muiTheme.typography.fontFamily,
-                          color: muiTheme.palette.text.primary,
-                          m: 0,
-                        }}
+                        sx={{ fontFamily: muiTheme.typography.fontFamily, color: muiTheme.palette.text.primary, m: 0 }}
                       />
                     </Box>
                   ))}
@@ -1191,82 +1021,29 @@ const SuperAdminDashboard = () => {
                   <Table sx={{ minWidth: 650 }} aria-label="approved members table">
                     <TableHead>
                       <TableRow>
-                        <TableCell
-                          sx={{
-                            fontFamily: muiTheme.typography.fontFamily,
-                            background: muiTheme.custom.gradients.listItem,
-                            color: muiTheme.palette.primary.main,
-                            fontWeight: 'bold',
-                          }}
-                        >
+                        <TableCell sx={{ fontFamily: muiTheme.typography.fontFamily, background: muiTheme.custom.gradients.listItem, color: muiTheme.palette.primary.main, fontWeight: 'bold' }}>
                           <Checkbox
                             checked={selectedApproved.length === filteredApprovedMembers.length && filteredApprovedMembers.length > 0}
                             onChange={handleSelectAllApproved}
-                            sx={{
-                              color: muiTheme.palette.text.primary,
-                              '&.Mui-checked': { color: muiTheme.palette.secondary.main },
-                            }}
+                            sx={{ color: muiTheme.palette.text.primary, '&.Mui-checked': { color: greenLightColor } }}
                           />
                         </TableCell>
-                        <TableCell
-                          sx={{
-                            fontFamily: muiTheme.typography.fontFamily,
-                            background: muiTheme.custom.gradients.listItem,
-                            color: muiTheme.palette.primary.main,
-                            fontWeight: 'bold',
-                          }}
-                        >
-                          <TableSortLabel
-                            active={approvedSortField === 'name'}
-                            direction={approvedSortOrder}
-                            onClick={() => handleApprovedSort('name')}
-                            sx={{ color: muiTheme.palette.primary.main }}
-                          >
+                        <TableCell sx={{ fontFamily: muiTheme.typography.fontFamily, background: muiTheme.custom.gradients.listItem, color: muiTheme.palette.primary.main, fontWeight: 'bold' }}>
+                          <TableSortLabel active={approvedSortField === 'name'} direction={approvedSortOrder} onClick={() => handleApprovedSort('name')} sx={{ color: muiTheme.palette.primary.main, '&:hover': { color: greenLightColor } }}>
                             Name
                           </TableSortLabel>
                         </TableCell>
-                        <TableCell
-                          sx={{
-                            fontFamily: muiTheme.typography.fontFamily,
-                            background: muiTheme.custom.gradients.listItem,
-                            color: muiTheme.palette.primary.main,
-                            fontWeight: 'bold',
-                          }}
-                        >
-                          <TableSortLabel
-                            active={approvedSortField === 'email'}
-                            direction={approvedSortOrder}
-                            onClick={() => handleApprovedSort('email')}
-                            sx={{ color: muiTheme.palette.primary.main }}
-                          >
+                        <TableCell sx={{ fontFamily: muiTheme.typography.fontFamily, background: muiTheme.custom.gradients.listItem, color: muiTheme.palette.primary.main, fontWeight: 'bold' }}>
+                          <TableSortLabel active={approvedSortField === 'email'} direction={approvedSortOrder} onClick={() => handleApprovedSort('email')} sx={{ color: muiTheme.palette.primary.main, '&:hover': { color: greenLightColor } }}>
                             Email
                           </TableSortLabel>
                         </TableCell>
-                        <TableCell
-                          sx={{
-                            fontFamily: muiTheme.typography.fontFamily,
-                            background: muiTheme.custom.gradients.listItem,
-                            color: muiTheme.palette.primary.main,
-                            fontWeight: 'bold',
-                          }}
-                        >
-                          <TableSortLabel
-                            active={approvedSortField === 'role'}
-                            direction={approvedSortOrder}
-                            onClick={() => handleApprovedSort('role')}
-                            sx={{ color: muiTheme.palette.primary.main }}
-                          >
+                        <TableCell sx={{ fontFamily: muiTheme.typography.fontFamily, background: muiTheme.custom.gradients.listItem, color: muiTheme.palette.primary.main, fontWeight: 'bold' }}>
+                          <TableSortLabel active={approvedSortField === 'role'} direction={approvedSortOrder} onClick={() => handleApprovedSort('role')} sx={{ color: muiTheme.palette.primary.main, '&:hover': { color: greenLightColor } }}>
                             Role
                           </TableSortLabel>
                         </TableCell>
-                        <TableCell
-                          sx={{
-                            fontFamily: muiTheme.typography.fontFamily,
-                            background: muiTheme.custom.gradients.listItem,
-                            color: muiTheme.palette.primary.main,
-                            fontWeight: 'bold',
-                          }}
-                        >
+                        <TableCell sx={{ fontFamily: muiTheme.typography.fontFamily, background: muiTheme.custom.gradients.listItem, color: muiTheme.palette.primary.main, fontWeight: 'bold' }}>
                           Actions
                         </TableCell>
                       </TableRow>
@@ -1278,7 +1055,7 @@ const SuperAdminDashboard = () => {
                           <TableRow
                             key={member._id}
                             sx={{
-                              '&:hover': { backgroundColor: muiTheme.custom.gradients.listItemHover },
+                              '&:hover': { backgroundColor: hoverBackground },
                               backgroundColor: index % 2 === 0 ? 'transparent' : isDarkMode ? 'rgba(255, 255, 255, 0.02)' : 'rgba(0, 0, 0, 0.02)',
                             }}
                           >
@@ -1286,10 +1063,7 @@ const SuperAdminDashboard = () => {
                               <Checkbox
                                 checked={selectedApproved.includes(member._id)}
                                 onChange={() => handleSelectApproved(member._id)}
-                                sx={{
-                                  color: muiTheme.palette.text.primary,
-                                  '&.Mui-checked': { color: muiTheme.palette.secondary.main },
-                                }}
+                                sx={{ color: muiTheme.palette.text.primary, '&.Mui-checked': { color: greenLightColor } }}
                               />
                             </TableCell>
                             <TableCell sx={{ fontFamily: muiTheme.typography.fontFamily, color: muiTheme.palette.text.primary, py: 1.5 }}>
@@ -1314,11 +1088,7 @@ const SuperAdminDashboard = () => {
                                     transition: 'all 0.3s ease',
                                     color: muiTheme.palette.text.primary,
                                     borderColor: muiTheme.palette.border.main,
-                                    '&:hover': {
-                                      transform: 'scale(1.05)',
-                                      borderColor: muiTheme.palette.primary.main,
-                                      backgroundColor: muiTheme.custom.gradients.listItemHover,
-                                    },
+                                    '&:hover': { transform: 'scale(1.05)', borderColor: greenLightColor, backgroundColor: hoverBackground, color: greenLightColor },
                                   }}
                                   disabled={member.role === 'superadmin' || actionLoading[member._id] || bulkLoading}
                                 >
@@ -1341,11 +1111,7 @@ const SuperAdminDashboard = () => {
                                     borderRadius: '8px',
                                     transition: 'all 0.3s ease',
                                     color: isDarkMode ? muiTheme.palette.text.primary : '#ffffff',
-                                    '&:hover': {
-                                      transform: 'scale(1.05)',
-                                      backgroundColor: muiTheme.palette.error.dark,
-                                      boxShadow: muiTheme.custom.shadows.buttonHover,
-                                    },
+                                    '&:hover': { transform: 'scale(1.05)', backgroundColor: muiTheme.palette.error.dark, boxShadow: muiTheme.custom.shadows.buttonHover },
                                   }}
                                   disabled={actionLoading[member._id] || bulkLoading}
                                 >
@@ -1369,12 +1135,8 @@ const SuperAdminDashboard = () => {
                 onRowsPerPageChange={handleApprovedChangeRowsPerPage}
                 sx={{
                   color: muiTheme.palette.text.primary,
-                  '& .MuiIconButton-root': {
-                    color: muiTheme.palette.text.primary,
-                  },
-                  '& .MuiSelect-icon': {
-                    color: muiTheme.palette.text.primary,
-                  },
+                  '& .MuiIconButton-root': { color: muiTheme.palette.text.primary, '&:hover': { color: greenLightColor } },
+                  '& .MuiSelect-icon': { color: muiTheme.palette.text.primary },
                 }}
               />
             </>
@@ -1383,12 +1145,8 @@ const SuperAdminDashboard = () => {
               No approved members
             </Typography>
           )}
-          <Modal
-            open={openModal}
-            onClose={handleCloseModal}
-            aria-labelledby="modal-modal-title"
-            aria-describedby="modal-modal-description"
-          >
+          {/* Edit Access Modal */}
+          <Modal open={openModal} onClose={handleCloseModal} aria-labelledby="modal-modal-title" aria-describedby="modal-modal-description">
             <Fade in={openModal}>
               <Box
                 sx={{
@@ -1404,15 +1162,7 @@ const SuperAdminDashboard = () => {
                   border: `1px solid ${muiTheme.palette.border.main}`,
                 }}
               >
-                <Typography
-                  id="modal-modal-title"
-                  variant="h6"
-                  sx={{
-                    mb: 2,
-                    fontFamily: muiTheme.typography.fontFamily,
-                    color: muiTheme.palette.primary.main,
-                  }}
-                >
+                <Typography id="modal-modal-title" variant="h6" sx={{ mb: 2, fontFamily: muiTheme.typography.fontFamily, color: muiTheme.palette.primary.main }}>
                   Edit Access for {selectedMember?.firstName} {selectedMember?.lastName}
                 </Typography>
                 <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2 }}>
@@ -1423,19 +1173,11 @@ const SuperAdminDashboard = () => {
                         <Checkbox
                           checked={tempPermissions[page.key] || false}
                           onChange={(e) => handleAccessChange(page.key, e.target.checked)}
-                          sx={{
-                            color: muiTheme.palette.text.primary,
-                            '&.Mui-checked': {
-                              color: muiTheme.palette.secondary.main,
-                            },
-                          }}
+                          sx={{ color: muiTheme.palette.text.primary, '&.Mui-checked': { color: greenLightColor } }}
                         />
                       }
                       label={page.label}
-                      sx={{
-                        fontFamily: muiTheme.typography.fontFamily,
-                        color: muiTheme.palette.text.primary,
-                      }}
+                      sx={{ fontFamily: muiTheme.typography.fontFamily, color: muiTheme.palette.text.primary }}
                     />
                   ))}
                 </Box>
@@ -1449,11 +1191,7 @@ const SuperAdminDashboard = () => {
                       borderColor: muiTheme.palette.border.main,
                       borderRadius: '8px',
                       transition: 'all 0.3s ease',
-                      '&:hover': {
-                        transform: 'scale(1.05)',
-                        borderColor: muiTheme.palette.primary.main,
-                        backgroundColor: muiTheme.custom.gradients.listItemHover,
-                      },
+                      '&:hover': { transform: 'scale(1.05)', borderColor: greenLightColor, backgroundColor: hoverBackground, color: greenLightColor },
                     }}
                   >
                     Cancel
@@ -1467,11 +1205,7 @@ const SuperAdminDashboard = () => {
                       color: '#ffffff',
                       borderRadius: '8px',
                       transition: 'all 0.3s ease',
-                      '&:hover': {
-                        transform: 'scale(1.05)',
-                        background: 'linear-gradient(90deg, #34A853, #4285F4)',
-                        boxShadow: muiTheme.custom.shadows.buttonHover,
-                      },
+                      '&:hover': { transform: 'scale(1.05)', background: 'linear-gradient(90deg, #34A853, #4285F4)', boxShadow: muiTheme.custom.shadows.buttonHover },
                     }}
                   >
                     Save
@@ -1480,11 +1214,8 @@ const SuperAdminDashboard = () => {
               </Box>
             </Fade>
           </Modal>
-          <Modal
-            open={deleteConfirmModal.open}
-            onClose={handleCloseDeleteConfirm}
-            aria-labelledby="delete-confirm-modal-title"
-          >
+          {/* Delete Confirmation Modal */}
+          <Modal open={deleteConfirmModal.open} onClose={handleCloseDeleteConfirm} aria-labelledby="delete-confirm-modal-title">
             <Fade in={deleteConfirmModal.open}>
               <Box
                 sx={{
@@ -1500,24 +1231,10 @@ const SuperAdminDashboard = () => {
                   border: `1px solid ${muiTheme.palette.border.main}`,
                 }}
               >
-                <Typography
-                  id="delete-confirm-modal-title"
-                  variant="h6"
-                  sx={{
-                    mb: 2,
-                    fontFamily: muiTheme.typography.fontFamily,
-                    color: muiTheme.palette.primary.main,
-                  }}
-                >
+                <Typography id="delete-confirm-modal-title" variant="h6" sx={{ mb: 2, fontFamily: muiTheme.typography.fontFamily, color: muiTheme.palette.primary.main }}>
                   Confirm Deletion
                 </Typography>
-                <Typography
-                  sx={{
-                    mb: 3,
-                    fontFamily: muiTheme.typography.fontFamily,
-                    color: muiTheme.palette.text.primary,
-                  }}
-                >
+                <Typography sx={{ mb: 3, fontFamily: muiTheme.typography.fontFamily, color: muiTheme.palette.text.primary }}>
                   Are you sure you want to delete {deleteConfirmModal.userName}? This action cannot be undone.
                 </Typography>
                 <Box sx={{ display: 'flex', gap: 2, justifyContent: 'flex-end' }}>
@@ -1530,11 +1247,7 @@ const SuperAdminDashboard = () => {
                       borderColor: muiTheme.palette.border.main,
                       borderRadius: '8px',
                       transition: 'all 0.3s ease',
-                      '&:hover': {
-                        transform: 'scale(1.05)',
-                        borderColor: muiTheme.palette.primary.main,
-                        backgroundColor: muiTheme.custom.gradients.listItemHover,
-                      },
+                      '&:hover': { transform: 'scale(1.05)', borderColor: greenLightColor, backgroundColor: hoverBackground, color: greenLightColor },
                     }}
                   >
                     Cancel
@@ -1548,11 +1261,7 @@ const SuperAdminDashboard = () => {
                       borderRadius: '8px',
                       transition: 'all 0.3s ease',
                       color: isDarkMode ? muiTheme.palette.text.primary : '#ffffff',
-                      '&:hover': {
-                        transform: 'scale(1.05)',
-                        backgroundColor: muiTheme.palette.error.dark,
-                        boxShadow: muiTheme.custom.shadows.buttonHover,
-                      },
+                      '&:hover': { transform: 'scale(1.05)', backgroundColor: muiTheme.palette.error.dark, boxShadow: muiTheme.custom.shadows.buttonHover },
                     }}
                   >
                     Delete
@@ -1561,11 +1270,8 @@ const SuperAdminDashboard = () => {
               </Box>
             </Fade>
           </Modal>
-          <Modal
-            open={approveConfirmModal.open}
-            onClose={handleCloseApproveConfirm}
-            aria-labelledby="approve-confirm-modal-title"
-          >
+          {/* Approve Confirmation Modal */}
+          <Modal open={approveConfirmModal.open} onClose={handleCloseApproveConfirm} aria-labelledby="approve-confirm-modal-title">
             <Fade in={approveConfirmModal.open}>
               <Box
                 sx={{
@@ -1581,24 +1287,10 @@ const SuperAdminDashboard = () => {
                   border: `1px solid ${muiTheme.palette.border.main}`,
                 }}
               >
-                <Typography
-                  id="approve-confirm-modal-title"
-                  variant="h6"
-                  sx={{
-                    mb: 2,
-                    fontFamily: muiTheme.typography.fontFamily,
-                    color: muiTheme.palette.primary.main,
-                  }}
-                >
+                <Typography id="approve-confirm-modal-title" variant="h6" sx={{ mb: 2, fontFamily: muiTheme.typography.fontFamily, color: muiTheme.palette.primary.main }}>
                   Confirm Approval
                 </Typography>
-                <Typography
-                  sx={{
-                    mb: 3,
-                    fontFamily: muiTheme.typography.fontFamily,
-                    color: muiTheme.palette.text.primary,
-                  }}
-                >
+                <Typography sx={{ mb: 3, fontFamily: muiTheme.typography.fontFamily, color: muiTheme.palette.text.primary }}>
                   Are you sure you want to approve {approveConfirmModal.userName} as a {approveConfirmModal.role}?
                 </Typography>
                 <Box sx={{ display: 'flex', gap: 2, justifyContent: 'flex-end' }}>
@@ -1611,17 +1303,13 @@ const SuperAdminDashboard = () => {
                       borderColor: muiTheme.palette.border.main,
                       borderRadius: '8px',
                       transition: 'all 0.3s ease',
-                      '&:hover': {
-                        transform: 'scale(1.05)',
-                        borderColor: muiTheme.palette.primary.main,
-                        backgroundColor: muiTheme.custom.gradients.listItemHover,
-                      },
+                      '&:hover': { transform: 'scale(1.05)', borderColor: greenLightColor, backgroundColor: hoverBackground, color: greenLightColor },
                     }}
                   >
                     Cancel
                   </Button>
                   <Button
-                    onClick={() => handleApproveMember(approveConfirmModal.userId)}
+                    onClick={() => handleApproveMember(approveConfirmModal.userId, approveConfirmModal.role)}
                     variant="contained"
                     color="primary"
                     sx={{
@@ -1630,11 +1318,7 @@ const SuperAdminDashboard = () => {
                       color: '#ffffff',
                       borderRadius: '8px',
                       transition: 'all 0.3s ease',
-                      '&:hover': {
-                        transform: 'scale(1.05)',
-                        background: 'linear-gradient(90deg, #34A853, #4285F4)',
-                        boxShadow: muiTheme.custom.shadows.buttonHover,
-                      },
+                      '&:hover': { transform: 'scale(1.05)', background: 'linear-gradient(90deg, #34A853, #4285F4)', boxShadow: muiTheme.custom.shadows.buttonHover },
                     }}
                   >
                     Approve
@@ -1643,26 +1327,70 @@ const SuperAdminDashboard = () => {
               </Box>
             </Fade>
           </Modal>
-          <Snackbar
+          {/* Reject Confirmation Modal */}
+          <Modal open={rejectConfirmModal.open} onClose={handleCloseRejectConfirm} aria-labelledby="reject-confirm-modal-title">
+            <Fade in={rejectConfirmModal.open}>
+              <Box
+                sx={{
+                  position: 'absolute',
+                  top: '50%',
+                  left: '50%',
+                  transform: 'translate(-50%, -50%)',
+                  width: 400,
+                  p: 4,
+                  borderRadius: 2,
+                  background: isDarkMode ? 'rgba(30, 30, 50, 0.95)' : 'rgba(255, 255, 255, 0.95)',
+                  boxShadow: muiTheme.custom.shadows.paper,
+                  border: `1px solid ${muiTheme.palette.border.main}`,
+                }}
+              >
+                <Typography id="reject-confirm-modal-title" variant="h6" sx={{ mb: 2, fontFamily: muiTheme.typography.fontFamily, color: muiTheme.palette.primary.main }}>
+                  Confirm Rejection
+                </Typography>
+                <Typography sx={{ mb: 3, fontFamily: muiTheme.typography.fontFamily, color: muiTheme.palette.text.primary }}>
+                  Are you sure you want to reject {rejectConfirmModal.userName}? This action cannot be undone.
+                </Typography>
+                <Box sx={{ display: 'flex', gap: 2, justifyContent: 'flex-end' }}>
+                  <Button
+                    onClick={handleCloseRejectConfirm}
+                    variant="outlined"
+                    sx={{
+                      fontFamily: muiTheme.typography.fontFamily,
+                      color: muiTheme.palette.text.primary,
+                      borderColor: muiTheme.palette.border.main,
+                      borderRadius: '8px',
+                      transition: 'all 0.3s ease',
+                      '&:hover': { transform: 'scale(1.05)', borderColor: greenLightColor, backgroundColor: hoverBackground, color: greenLightColor },
+                    }}
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    onClick={() => handleRejectMember(rejectConfirmModal.userId)}
+                    variant="contained"
+                    color="error"
+                    sx={{
+                      fontFamily: muiTheme.typography.fontFamily,
+                      borderRadius: '8px',
+                      transition: 'all 0.3s ease',
+                      color: isDarkMode ? muiTheme.palette.text.primary : '#ffffff',
+                      '&:hover': { transform: 'scale(1.05)', backgroundColor: muiTheme.palette.error.dark, boxShadow: muiTheme.custom.shadows.buttonHover },
+                    }}
+                  >
+                    Reject
+                  </Button>
+                </Box>
+              </Box>
+            </Fade>
+          </Modal>
+          {/* CustomSnackbar */}
+          <CustomSnackbar
             open={snackbar.open}
-            autoHideDuration={6000}
             onClose={handleCloseSnackbar}
-            anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
-          >
-            <Alert
-              onClose={handleCloseSnackbar}
-              severity={snackbar.severity}
-              sx={{
-                width: '100%',
-                fontFamily: muiTheme.typography.fontFamily,
-                background: isDarkMode ? 'rgba(255, 255, 255, 0.05)' : 'rgba(255, 255, 255, 0.1)',
-                backdropFilter: 'blur(10px)',
-                color: muiTheme.palette.text.primary,
-              }}
-            >
-              {snackbar.message}
-            </Alert>
-          </Snackbar>
+            severity={snackbar.severity}
+            message={snackbar.message}
+            sx={{ fontFamily: muiTheme.typography.fontFamily, width: '100%' }}
+          />
         </Box>
       </Box>
     </Layout>

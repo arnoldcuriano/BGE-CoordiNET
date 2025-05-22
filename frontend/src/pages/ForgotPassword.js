@@ -63,7 +63,7 @@ const ForgotPassword = () => {
     setLoading(true);
 
     try {
-      const response = await axios.post('http://localhost:5000/auth/forgot-password', { email });
+      const response = await axios.post('/auth/forgot-password', { email });
       setMessage(response.data.message);
     } catch (err) {
       setError(err.response?.data?.message || 'An error occurred. Please try again.');

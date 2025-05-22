@@ -1,5 +1,6 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
+import debounce from 'lodash.debounce';
 
 const AuthContext = createContext();
 
@@ -11,122 +12,101 @@ export const AuthProvider = ({ children }) => {
     role: null,
     firstName: null,
     lastName: null,
+    email: null,
     profilePicture: null,
     isApproved: false,
     accessPermissions: {},
   });
   const [hasLoggedOut, setHasLoggedOut] = useState(false);
+  const [isFetching, setIsFetching] = useState(false);
 
-  const fetchUser = async () => {
-    try {
-      setAuthState((prev) => ({
-        ...prev,
-        loading: true,
-      }));
-      console.log('AuthContext: Starting auth check at', new Date().toISOString());
-      const response = await axios.get('http://localhost:5000/auth/user', {
-        withCredentials: true,
-        timeout: 5000,
-      });
-      console.log('AuthContext: /auth/user response received at', new Date().toISOString(), response.data);
-      if (response.data && response.data.role) {
-        setAuthState({
-          loading: false,
-          isAuthenticated: true,
-          userRole: response.data.role,
-          role: response.data.role,
-          firstName: response.data.firstName,
-          lastName: response.data.lastName,
-          profilePicture: response.data.profilePicture,
-          isApproved: response.data.isApproved || false,
-          accessPermissions: response.data.accessPermissions || {},
-        });
-        console.log('AuthContext: User authenticated:', response.data);
-        setHasLoggedOut(false); // Reset logout flag on successful authentication
-      } else {
-        setAuthState({
-          loading: false,
-          isAuthenticated: false,
-          userRole: null,
-          role: null,
-          firstName: null,
-          lastName: null,
-          profilePicture: null,
-          isApproved: false,
-          accessPermissions: {},
-        });
-        console.log('AuthContext: No user authenticated');
+  const fetchUser = useCallback(
+    debounce(async () => {
+      if (isFetching || hasLoggedOut) return;
+      setIsFetching(true);
+      let attempts = 0;
+      const maxAttempts = 3;
+      while (attempts < maxAttempts) {
+        try {
+          setAuthState((prev) => ({ ...prev, loading: true }));
+          const response = await axios.get('/auth/user', { withCredentials: true, timeout: 10000 });
+          if (response.data && response.data.role) {
+            setAuthState({
+              loading: false,
+              isAuthenticated: true,
+              userRole: response.data.role,
+              role: response.data.role,
+              firstName: response.data.firstName,
+              lastName: response.data.lastName,
+              email: response.data.email,
+              profilePicture: response.data.profilePicture,
+              isApproved: response.data.isApproved || false,
+              accessPermissions: response.data.accessPermissions || {},
+            });
+            break;
+          } else {
+            throw new Error('No user data');
+          }
+        } catch (error) {
+          console.error('Auth check failed at', new Date().toISOString(), error.message);
+          attempts++;
+          if (attempts === maxAttempts) {
+            setAuthState({
+              loading: false,
+              isAuthenticated: false,
+              userRole: null,
+              role: null,
+              firstName: null,
+              lastName: null,
+              email: null,
+              profilePicture: null,
+              isApproved: false,
+              accessPermissions: {},
+            });
+          }
+          await new Promise((resolve) => setTimeout(resolve, 1000 * attempts)); // Exponential backoff
+        } finally {
+          if (attempts >= maxAttempts) setIsFetching(false);
+        }
       }
-    } catch (error) {
-      console.error('AuthContext: Auth check failed at', new Date().toISOString(), error.message, error.response?.data);
-      setAuthState({
-        loading: false,
-        isAuthenticated: false,
-        userRole: null,
-        role: null,
-        firstName: null,
-        lastName: null,
-        profilePicture: null,
-        isApproved: false,
-        accessPermissions: {},
-      });
-    }
-  };
+      setIsFetching(false);
+    }, 1000),
+    [hasLoggedOut]
+  );
 
-  const refreshUser = async () => {
-    console.log('AuthContext: Refreshing user data');
-    await fetchUser();
-  };
-
-  // Initial auth check on mount
   useEffect(() => {
     let isMounted = true;
     const checkAuth = async () => {
-      if (!isMounted) return;
-      if (hasLoggedOut) {
-        console.log('AuthContext: Skipping fetchUser after logout');
-        setAuthState((prev) => ({
-          ...prev,
-          loading: false,
-        }));
+      if (!isMounted || hasLoggedOut || isFetching) {
+        console.log('AuthContext: Skipping fetchUser due to unmount, logout, or ongoing fetch');
+        setAuthState((prev) => ({ ...prev, loading: false }));
         return;
       }
       await fetchUser();
     };
 
-    const timeoutId = setTimeout(() => {
-      if (isMounted && authState.loading) {
-        console.warn('AuthContext: Auth check timed out after 10 seconds, forcing loading to false');
-        setAuthState((prev) => ({
-          ...prev,
-          loading: false,
-        }));
-      }
-    }, 10000);
-
     checkAuth();
 
     return () => {
       isMounted = false;
-      clearTimeout(timeoutId);
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [hasLoggedOut]); // Intentionally omitting authState.loading to prevent re-triggering
+  }, [hasLoggedOut]);
 
-  // Retry fetch if auth data is incomplete
-  useEffect(() => {
-    if (authState.isAuthenticated && (!authState.userRole || Object.keys(authState.accessPermissions || {}).length === 0)) {
-      console.log('AuthContext: Retrying fetch due to incomplete auth data');
-      refreshUser();
+  const login = async (email, password, rememberMe) => {
+    try {
+      const response = await axios.post('/auth/login', { email, password, rememberMe }, { withCredentials: true });
+      setHasLoggedOut(false);
+      await fetchUser();
+      return response.data;
+    } catch (error) {
+      console.error('AuthContext: Login failed:', error.message);
+      throw error;
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [authState.isAuthenticated, authState.userRole, authState.accessPermissions]); // Intentionally omitting refreshUser as it's stable
+  };
 
   const handleLogout = async (navigate) => {
     try {
-      console.log('AuthContext: Initiating logout');
-      const response = await axios.get('http://localhost:5000/auth/logout', { withCredentials: true });
-      console.log('AuthContext: Logout response:', response.data);
+      await axios.get('/auth/logout', { withCredentials: true });
       setAuthState({
         loading: false,
         isAuthenticated: false,
@@ -134,33 +114,32 @@ export const AuthProvider = ({ children }) => {
         role: null,
         firstName: null,
         lastName: null,
+        email: null,
         profilePicture: null,
         isApproved: false,
         accessPermissions: {},
       });
-      setHasLoggedOut(true); // Set logout flag
-      console.log('AuthContext: Logout successful');
+      setHasLoggedOut(true);
+      if (navigate) navigate('/login');
       return true;
     } catch (error) {
-      console.error('AuthContext: Logout failed:', error.message, error.response?.data);
-      setAuthState({
-        loading: false,
-        isAuthenticated: false,
-        userRole: null,
-        role: null,
-        firstName: null,
-        lastName: null,
-        profilePicture: null,
-        isApproved: false,
-        accessPermissions: {},
-      });
-      setHasLoggedOut(true); // Set logout flag even on error
+      console.error('AuthContext: Logout failed:', error.message);
+      setHasLoggedOut(true);
+      if (navigate) navigate('/login');
       return false;
     }
   };
 
+  // Added updateUser function to update authState
+  const updateUser = (updates) => {
+    setAuthState((prevState) => ({
+      ...prevState,
+      ...updates,
+    }));
+  };
+
   return (
-    <AuthContext.Provider value={{ authState, setAuthState, handleLogout, refreshUser, fetchUser }}>
+    <AuthContext.Provider value={{ authState, setAuthState, login, handleLogout, fetchUser, updateUser }}>
       {children}
     </AuthContext.Provider>
   );
@@ -168,8 +147,6 @@ export const AuthProvider = ({ children }) => {
 
 export const useAuth = () => {
   const context = useContext(AuthContext);
-  if (!context) {
-    throw new Error('useAuth must be used within an AuthProvider');
-  }
+  if (!context) throw new Error('useAuth must be used within an AuthProvider');
   return context;
 };

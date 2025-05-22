@@ -54,6 +54,37 @@ const App = () => {
     return theme;
   }, [isDarkMode]);
 
+  const routes = [
+    { path: "/login", element: <Login />, isPublic: true },
+    { path: "/signup", element: <Signup />, isPublic: true },
+    { path: "/forgot-password", element: <ForgotPassword />, isPublic: true },
+    { path: "/reset-password", element: <ResetPassword />, isPublic: true },
+    { path: "/welcome", element: <Welcome /> },
+    { path: "/dashboard", element: <Dashboard />, pageKey: "dashboard" },
+    { path: "/hr-management/members", element: <Members />, pageKey: "hrManagement" },
+    { path: "/partners", element: <Partners />, pageKey: "partners" },
+    { path: "/hr-management", element: <HRManagement />, pageKey: "hrManagement" },
+    { path: "/finance-management", element: <PlaceholderPage pageName="Finance Management" />, pageKey: "financeManagement" },
+    { path: "/finance-management/members-list", element: <PlaceholderPage pageName="Finance Management" />, pageKey: "financeManagement" },
+    { path: "/projects", element: <Projects />, pageKey: "projects" },
+    { path: "/projects/active", element: <Projects />, pageKey: "projects" },
+    { path: "/projects/archived", element: <Projects />, pageKey: "projects" },
+    { path: "/it-inventory", element: <ITInventory />, pageKey: "itInventory" },
+    { path: "/quick-tools", element: <QuickTools />, pageKey: "quickTools" },
+    { 
+      path: "/superadmin-dashboard", 
+      element: <ErrorBoundary><SuperAdminDashboard /></ErrorBoundary>, 
+      pageKey: "superadminDashboard" 
+    },
+    { path: "/profile-settings", element: <ProfileSettings />, pageKey: "settings" },
+    { path: "/account-settings", element: <AccountSettings />, pageKey: "settings" },
+    { path: "/no-access", element: <NoAccess /> },
+    { path: "/help", element: <PlaceholderPage pageName="Help" />, pageKey: "help" },
+    { path: "/patch-notes", element: <PlaceholderPage pageName="Patch Notes" />, pageKey: "patchNotes" },
+    { path: "/analytics", element: <PlaceholderPage pageName="Analytics" />, pageKey: "analytics" },
+    { path: "*", element: <PlaceholderPage pageName="Not Found" />, pageKey: "notFound" },
+  ];
+
   return (
     <ThemeProvider value={{ isDarkMode, toggleTheme, muiTheme }}>
       <MuiThemeProvider theme={muiTheme}>
@@ -61,33 +92,17 @@ const App = () => {
         <AuthProvider>
           <Router>
             <Routes>
-              <Route path="/login" element={<ProtectedRoute isPublic><Login /></ProtectedRoute>} />
-              <Route path="/signup" element={<ProtectedRoute isPublic><Signup /></ProtectedRoute>} />
-              <Route path="/forgot-password" element={<ProtectedRoute isPublic><ForgotPassword /></ProtectedRoute>} />
-              <Route path="/reset-password" element={<ProtectedRoute isPublic><ResetPassword /></ProtectedRoute>} />
-              <Route path="/welcome" element={<ProtectedRoute><Welcome /></ProtectedRoute>} />
-              <Route path="/dashboard" element={<ProtectedRoute pageKey="dashboard"><Dashboard /></ProtectedRoute>} />
-              <Route path="/hr-management/members" element={<ProtectedRoute pageKey="hrManagement"><Members /></ProtectedRoute>} />
-              <Route path="/partners" element={<ProtectedRoute pageKey="partners"><Partners /></ProtectedRoute>} />
-              <Route path="/hr-management" element={<ProtectedRoute pageKey="hrManagement"><HRManagement /></ProtectedRoute>} />
-              <Route path='/finance-management' element={<ProtectedRoute pageKey="financeManagement"><PlaceholderPage pageName="Finance Management" /></ProtectedRoute>} />
-              <Route path='/finance-management/members-list' element={<ProtectedRoute pageKey="financeManagement"><PlaceholderPage pageName="Finance Management" /></ProtectedRoute>} />
-              <Route path="/projects" element={<ProtectedRoute pageKey="projects"><Projects /></ProtectedRoute>} />
-              <Route path="/projects/active" element={<ProtectedRoute pageKey="projects"><Projects /></ProtectedRoute>} />
-              <Route path="/projects/archived" element={<ProtectedRoute pageKey="projects"><Projects /></ProtectedRoute>} />
-              <Route path="/it-inventory" element={<ProtectedRoute pageKey="itInventory"><ITInventory /></ProtectedRoute>} />
-              <Route path="/quick-tools" element={<ProtectedRoute pageKey="quickTools"><QuickTools /></ProtectedRoute>} />
-              <Route
-                path="/superadmin-dashboard"
-                element={<ProtectedRoute pageKey="superadminDashboard"><ErrorBoundary><SuperAdminDashboard /></ErrorBoundary></ProtectedRoute>}
-              />
-              <Route path="/profile-settings" element={<ProtectedRoute pageKey="settings"><ProfileSettings /></ProtectedRoute>} />
-              <Route path="/account-settings" element={<ProtectedRoute pageKey="settings"><AccountSettings /></ProtectedRoute>} />
-              <Route path="/no-access" element={<ProtectedRoute><NoAccess /></ProtectedRoute>} />
-              <Route path="/help" element={<ProtectedRoute pageKey="help"><PlaceholderPage pageName="Help" /></ProtectedRoute>} />
-              <Route path="/patch-notes" element={<ProtectedRoute pageKey="patchNotes"><PlaceholderPage pageName="Patch Notes" /></ProtectedRoute>} />
-              <Route path="/analytics" element={<ProtectedRoute pageKey="analytics"><PlaceholderPage pageName="Analytics" /></ProtectedRoute>} />
-              <Route path="*" element={<ProtectedRoute pageKey="notFound"><PlaceholderPage pageName="Not Found" /></ProtectedRoute>} />
+              {routes.map(({ path, element, isPublic, pageKey }) => (
+                <Route
+                  key={path}
+                  path={path}
+                  element={
+                    <ProtectedRoute isPublic={isPublic} pageKey={pageKey}>
+                      {element}
+                    </ProtectedRoute>
+                  }
+                />
+              ))}
             </Routes>
           </Router>
         </AuthProvider>
