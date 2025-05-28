@@ -23,6 +23,7 @@ import ProfileSettings from './pages/ProfileSettings';
 import AccountSettings from './pages/AccountSettings';
 import NoAccess from './pages/NoAccess';
 import PlaceholderPage from './pages/PlaceholderPage';
+import PatchNotes from './pages/PatchNotes';
 import getMuiTheme from './styles/muiTheme';
 
 const App = () => {
@@ -72,7 +73,7 @@ const App = () => {
     { path: "/it-inventory", element: <ITInventory />, pageKey: "itInventory" },
     { path: "/quick-tools", element: <QuickTools />, pageKey: "quickTools" },
     { 
-      path: "/superadmin-dashboard", 
+      path: "/superadmin-dashboard/*", // Add wildcard to allow nested routes
       element: <ErrorBoundary><SuperAdminDashboard /></ErrorBoundary>, 
       pageKey: "superadminDashboard" 
     },
@@ -80,9 +81,9 @@ const App = () => {
     { path: "/account-settings", element: <AccountSettings />, pageKey: "settings" },
     { path: "/no-access", element: <NoAccess /> },
     { path: "/help", element: <PlaceholderPage pageName="Help" />, pageKey: "help" },
-    { path: "/patch-notes", element: <PlaceholderPage pageName="Patch Notes" />, pageKey: "patchNotes" },
+    { path: "/patch-notes", element: <PatchNotes />, pageKey: "patchNotes" },
     { path: "/analytics", element: <PlaceholderPage pageName="Analytics" />, pageKey: "analytics" },
-    { path: "*", element: <PlaceholderPage pageName="Not Found" />, pageKey: "notFound" },
+    { path: "/*", element: <PlaceholderPage pageName="Not Found" />, pageKey: "notFound" },
   ];
 
   return (

@@ -78,11 +78,13 @@ const ProfileSettings = () => {
       setSuccess(null);
       setError(null);
       try {
-        const response = await api.post('/api/update-profile', { firstName, lastName });
+        console.log('ProfileSettings: Saving profile, API instance:', api);
+        const response = await api.post('/update-profile', { firstName, lastName }); // Remove leading /api
         await updateUser({ firstName, lastName });
         setSuccess(response.data.message || 'Profile updated successfully');
         setIsEditing(false);
       } catch (err) {
+        console.error('ProfileSettings: Error saving profile:', err);
         setError(err.response?.data?.message || 'Failed to update user details');
       } finally {
         setLoading(false);
@@ -104,13 +106,14 @@ const ProfileSettings = () => {
       const formData = new FormData();
       formData.append('profilePicture', file);
       try {
-        const response = await api.post('/api/upload-profile-picture', formData);
+        console.log('ProfileSettings: Uploading file, API instance:', api);
+        const response = await api.post('/upload-profile-picture', formData); // Remove leading /api
         const newProfilePictureUrl = response.data.profilePicture || authState.profilePicture;
         setProfilePicture(newProfilePictureUrl);
         await updateUser({ profilePicture: newProfilePictureUrl });
         setSuccess(response.data.message || 'Profile picture updated successfully');
       } catch (err) {
-        console.error('Error uploading profile picture:', err);
+        console.error('ProfileSettings: Error uploading profile picture:', err);
         setError(err.response?.data?.message || 'Failed to upload profile picture');
       } finally {
         setLoading(false);
@@ -123,11 +126,13 @@ const ProfileSettings = () => {
     setSuccess(null);
     setError(null);
     try {
-      await api.post('/api/remove-profile-picture');
+      console.log('ProfileSettings: Removing picture, API instance:', api);
+      await api.post('/remove-profile-picture'); // Remove leading /api
       setProfilePicture('');
       await updateUser({ profilePicture: '' });
       setSuccess('Profile picture removed successfully');
     } catch (err) {
+      console.error('ProfileSettings: Error removing profile picture:', err);
       setError(err.response?.data?.message || 'Failed to remove profile picture');
     } finally {
       setLoading(false);

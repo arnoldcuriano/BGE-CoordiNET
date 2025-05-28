@@ -11,7 +11,7 @@ const userManagementRoutes = require('./routes/auth/userManagement');
 const MongoStore = require('connect-mongo');
 const https = require('https');
 const fs = require('fs');
-const multer = require('multer'); 
+const patchNotesRoutes = require('./routes/api/patchNotes');
 
 const app = express();
 
@@ -20,6 +20,10 @@ const options = {
   key: fs.readFileSync('./key.pem'),
   cert: fs.readFileSync('./cert.pem'),
 };
+
+// Determine if we're in development mode
+const isDevelopment = process.env.NODE_ENV !== 'production';
+console.log('Server: Running in development mode:', isDevelopment);
 
 // Configure CORS for frontend at https://localhost:8443
 app.use(cors({
@@ -36,7 +40,7 @@ app.use(express.urlencoded({ extended: true }));
 // Session configuration with updated cookie settings
 app.use(
   session({
-    secret: process.env.SESSION_SECRET,
+    secret: process.env.SESSION_SECRET || 'your-secret-key',
     resave: false,
     saveUninitialized: false,
     store: MongoStore.create({
@@ -44,30 +48,39 @@ app.use(
       collectionName: 'sessions',
     }),
     cookie: {
-      secure: true,              // Required for HTTPS
+      secure: isDevelopment ? false : true, // Allow non-secure cookies in development
       maxAge: 24 * 60 * 60 * 1000, // 24 hours
-      httpOnly: true,            // Prevents client-side access to cookie
-      sameSite: 'none',          // Allows cross-site requests (frontend and backend on different ports)
-      domain: 'localhost',       // Works for localhost in development
+      httpOnly: true,
+      sameSite: isDevelopment ? 'lax' : 'none', // Use 'lax' in development
+      domain: 'localhost',
       path: '/',
     },
   })
 );
 
 // Initialize Passport.js for authentication
-require('./passport'); 
+require('./passport');
 app.use(passport.initialize());
 app.use(passport.session());
 
 // Mount routes
 app.use('/auth', authRoutes);
 app.use('/api', userManagementRoutes);
+app.use('/api/patch-notes', patchNotesRoutes);
+
+
+// Add middleware to log session details for debugging
+app.use((req, res, next) => {
+  console.log('Session middleware: Session ID:', req.sessionID);
+  console.log('Session middleware: Session data:', req.session);
+  console.log('Session middleware: User:', req.user);
+  next();
+});
 
 // Root route for basic server check
 app.get('/', (req, res) => {
   res.send('BGE-CoordiNET Backend is running!');
 });
-
 
 // Connect to MongoDB
 mongoose.connect(process.env.MONGO_URI)

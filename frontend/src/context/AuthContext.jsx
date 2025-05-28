@@ -1,6 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
-import debounce from 'lodash.debounce';
 
 const AuthContext = createContext();
 
@@ -20,59 +19,71 @@ export const AuthProvider = ({ children }) => {
   const [hasLoggedOut, setHasLoggedOut] = useState(false);
   const [isFetching, setIsFetching] = useState(false);
 
-  const fetchUser = useCallback(
-    debounce(async () => {
-      if (isFetching || hasLoggedOut) return;
-      setIsFetching(true);
-      let attempts = 0;
-      const maxAttempts = 3;
-      while (attempts < maxAttempts) {
-        try {
-          setAuthState((prev) => ({ ...prev, loading: true }));
-          const response = await axios.get('/auth/user', { withCredentials: true, timeout: 10000 });
-          if (response.data && response.data.role) {
-            setAuthState({
-              loading: false,
-              isAuthenticated: true,
-              userRole: response.data.role,
-              role: response.data.role,
-              firstName: response.data.firstName,
-              lastName: response.data.lastName,
-              email: response.data.email,
-              profilePicture: response.data.profilePicture,
-              isApproved: response.data.isApproved || false,
-              accessPermissions: response.data.accessPermissions || {},
-            });
-            break;
-          } else {
-            throw new Error('No user data');
-          }
-        } catch (error) {
-          console.error('Auth check failed at', new Date().toISOString(), error.message);
-          attempts++;
-          if (attempts === maxAttempts) {
-            setAuthState({
-              loading: false,
-              isAuthenticated: false,
-              userRole: null,
-              role: null,
-              firstName: null,
-              lastName: null,
-              email: null,
-              profilePicture: null,
-              isApproved: false,
-              accessPermissions: {},
-            });
-          }
-          await new Promise((resolve) => setTimeout(resolve, 1000 * attempts)); // Exponential backoff
-        } finally {
-          if (attempts >= maxAttempts) setIsFetching(false);
+  const fetchUser = useCallback(async () => {
+    if (isFetching || hasLoggedOut) {
+      console.log('AuthContext: Skipping fetchUser due to ongoing fetch or logout');
+      return;
+    }
+
+    setIsFetching(true);
+    let attempts = 0;
+    const maxAttempts = 3;
+    const initialRetryDelay = 500; // Reduced initial delay for faster retries
+
+    while (attempts < maxAttempts) {
+      try {
+        console.log('AuthContext: Fetching user data, attempt', attempts + 1);
+        setAuthState((prev) => ({ ...prev, loading: true }));
+        const response = await axios.get('/auth/user', { withCredentials: true, timeout: 5000 });
+        if (response.data && response.data.role) {
+          console.log('AuthContext: User data fetched successfully:', response.data);
+          setAuthState({
+            loading: false,
+            isAuthenticated: true,
+            userRole: response.data.role,
+            role: response.data.role,
+            firstName: response.data.firstName,
+            lastName: response.data.lastName,
+            email: response.data.email,
+            profilePicture: response.data.profilePicture,
+            isApproved: response.data.isApproved || false,
+            accessPermissions: response.data.accessPermissions || {},
+          });
+          break;
+        } else {
+          throw new Error('No user data');
+        }
+      } catch (error) {
+        console.error('AuthContext: Auth check failed at', new Date().toISOString(), error.message);
+        attempts++;
+        if (attempts === maxAttempts) {
+          console.log('AuthContext: Max attempts reached, setting authState to unauthenticated');
+          setAuthState({
+            loading: false,
+            isAuthenticated: false,
+            userRole: null,
+            role: null,
+            firstName: null,
+            lastName: null,
+            email: null,
+            profilePicture: null,
+            isApproved: false,
+            accessPermissions: {},
+          });
+        } else {
+          // Exponential backoff with a reduced initial delay
+          const delay = initialRetryDelay * Math.pow(2, attempts);
+          console.log(`AuthContext: Retrying after ${delay}ms...`);
+          await new Promise((resolve) => setTimeout(resolve, delay));
+        }
+      } finally {
+        if (attempts >= maxAttempts) {
+          setIsFetching(false);
         }
       }
-      setIsFetching(false);
-    }, 1000),
-    [hasLoggedOut]
-  );
+    }
+    setIsFetching(false);
+  }, [hasLoggedOut]);
 
   useEffect(() => {
     let isMounted = true;
@@ -90,7 +101,7 @@ export const AuthProvider = ({ children }) => {
     return () => {
       isMounted = false;
     };
-  }, [hasLoggedOut]);
+  }, [fetchUser, hasLoggedOut]);
 
   const login = async (email, password, rememberMe) => {
     try {
@@ -130,7 +141,6 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  // Added updateUser function to update authState
   const updateUser = (updates) => {
     setAuthState((prevState) => ({
       ...prevState,

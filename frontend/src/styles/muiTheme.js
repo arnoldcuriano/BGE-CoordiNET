@@ -16,7 +16,7 @@ const getMuiTheme = (isDarkMode) => {
         glass: isDarkMode ? 'rgba(30, 30, 50, 0.95)' : 'rgba(255, 255, 255, 0.95)',
       },
       text: {
-        primary: isDarkMode ? '#e0e0e0' : '#1a1a2e',
+        primary: isDarkMode ? '#e0e0e0' : '#373737',
         secondary: isDarkMode ? '#b0b0b0' : '#666',
       },
       border: {
