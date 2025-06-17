@@ -1,7 +1,7 @@
-import React from 'react';
-import { Typography, Box } from '@mui/material';
-import Layout from '../components/Layout';
-import { useAuth } from '../context/AuthContext';
+import React from "react";
+import { Typography, Box } from "@mui/material";
+import Layout from "../components/Layout";
+import { useAuth } from "../context/AuthContext";
 
 const PendingApprovals = ({ isDarkMode, toggleTheme }) => {
   const { authState } = useAuth();

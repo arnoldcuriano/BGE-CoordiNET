@@ -7,16 +7,26 @@
     "@emotion/styled": "^11.14.0",
     "@mui/icons-material": "^5.15.20",
     "@mui/material": "^5.15.20",
+    "ajv": "^8.12.0",
     "axios": "^1.7.2",
     "cross-env": "^7.0.3",
+    "csv-stringify": "^6.5.2",
     "dompurify": "^3.2.6",
+    "highlight.js": "11.0.1",
     "html-react-parser": "^5.2.5",
+    "lowlight": "2.0.0",
+    "papaparse": "^5.5.3",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "react-router-dom": "^6.24.0",
-    "react-scripts": "^5.0.1",
-    "react-syntax-highlighter": "^15.6.1",
+    "react-scripts": "5.0.1",
+    "refractor": "4.7.0",
+    "sanitize-html": "^2.17.0",
     "webfontloader": "^1.6.28"
+  },
+  "resolutions": {
+    "prismjs": "1.29.0",
+    "react-syntax-highlighter": "15.6.1"
   },
   "scripts": {
     "start": "cross-env NODE_OPTIONS=--openssl-legacy-provider HTTPS=true SSL_CRT_FILE=cert.pem SSL_KEY_FILE=key.pem react-scripts start",
@@ -42,5 +52,9 @@
       "last 1 safari version"
     ]
   },
-  "proxy": "https://localhost:5000"
+  "proxy": "https://localhost:5000",
+  "devDependencies": {
+    "@svgr/webpack": "^8.1.0",
+    "svgo": "^3.3.2"
+  }
 }

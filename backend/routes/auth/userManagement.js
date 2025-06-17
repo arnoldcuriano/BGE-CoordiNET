@@ -4,7 +4,7 @@ const User = require('../../models/User');
 const nodemailer = require('nodemailer');
 const bcrypt = require('bcrypt');
 const multer = require('multer');
-const s3 = require('../../s3config');
+const { s3Client: s3 } = require('../../s3config');
 const { PutObjectCommand, DeleteObjectCommand } = require('@aws-sdk/client-s3');
 
 // Configure Multer for file uploads
@@ -13,17 +13,48 @@ const upload = multer({
   limits: { fileSize: 5 * 1024 * 1024 }, // 5 MB limit
 });
 
+// Default profile picture URL
+const DEFAULT_PROFILE_PICTURE = '/images/default-avatar.png';
+
+// Middleware to check if user is authenticated
+const isAuthenticated = (req, res, next) => {
+  console.log('isAuthenticated middleware:', {
+    isAuthenticated: req.isAuthenticated(),
+    user: req.user,
+    session: req.session,
+  });
+  if (req.isAuthenticated() && req.user) {
+    return next();
+  }
+  console.error('Authentication failed: User not authenticated or req.user is undefined');
+  res.status(401).json({ message: 'Not authenticated' });
+};
+
+// Middleware to check if user is superadmin
+const isSuperAdmin = (req, res, next) => {
+  if (req.user && req.user.role === 'superadmin') {
+    return next();
+  }
+  console.error('Access denied: Insufficient permissions for user:', req.user?.email);
+  res.status(403).json({ message: 'Access denied. Insufficient permissions.' });
+};
+
+// Middleware to check if user is admin or superadmin
+const isAdminOrSuperAdmin = (req, res, next) => {
+  if (req.user && ['superadmin', 'admin'].includes(req.user.role)) {
+    return next();
+  }
+  console.error('Access denied: Insufficient permissions for user:', req.user?.email);
+  res.status(403).json({ message: 'Access denied. Insufficient permissions.' });
+};
+
 // Test route
 router.post('/test', (req, res) => {
   res.json({ message: 'Test successful' });
 });
 
 // Get user info
-router.get('/user', (req, res) => {
-  if (!req.user) {
-    return res.status(401).json({ message: 'Not authenticated' });
-  }
-
+router.get('/user', isAuthenticated, (req, res) => {
   let permissions = {
     help: true,
     patchNotes: true,
@@ -68,18 +99,71 @@ router.get('/user', (req, res) => {
     lastName: req.user.lastName,
     createdAt: req.user.createdAt,
     role: req.user.role,
-    profilePicture: req.user.profilePicture,
+    profilePicture: req.user.profilePicture
+      ? req.user.profilePicture.startsWith('http')
+        ? req.user.profilePicture // S3 URL
+        : DEFAULT_PROFILE_PICTURE // Fallback to default
+      : DEFAULT_PROFILE_PICTURE, // Fallback to default if no image
     isApproved: req.user.isApproved,
     accessPermissions: permissions,
   });
 });
 
-// Upload profile picture
-router.post('/upload-profile-picture', upload.single('profilePicture'), async (req, res) => {
-  if (!req.user) {
-    return res.status(401).json({ message: 'Not authenticated' });
+// Get all users (for ITInventory assignments)
+router.get('/users', isAuthenticated, async (req, res) => {
+  try {
+    const users = await User.find().select('firstName lastName profilePicture assignedItems');
+    const usersWithImageUrls = users.map(user => {
+      const profilePicture = user.profilePicture
+        ? user.profilePicture.startsWith('http')
+          ? user.profilePicture // Already an S3 URL
+          : DEFAULT_PROFILE_PICTURE // Fallback to default
+        : DEFAULT_PROFILE_PICTURE; // Fallback to default if no image
+      console.log(`User ${user.email || user._id}: Profile picture set to ${profilePicture}`);
+      return {
+        ...user._doc,
+        profilePicture,
+      };
+    });
+    res.json(usersWithImageUrls);
+  } catch (error) {
+    console.error('Error fetching users:', {
+      message: error.message,
+      stack: error.stack,
+    });
+    res.status(500).json({ message: 'Server error', error: error.message });
   }
+});
 
+// Get single user by ID (for detailed views or reassignments)
+router.get('/users/:userId', isAuthenticated, async (req, res) => {
+  try {
+    const user = await User.findById(req.params.userId).select('firstName lastName profilePicture assignedItems');
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+    const profilePicture = user.profilePicture
+      ? user.profilePicture.startsWith('http')
+        ? user.profilePicture // Already an S3 URL
+        : DEFAULT_PROFILE_PICTURE // Fallback to default
+      : DEFAULT_PROFILE_PICTURE; // Fallback to default if no image
+    console.log(`User ${user.email || user._id}: Profile picture set to ${profilePicture}`);
+    res.json({
+      ...user._doc,
+      profilePicture,
+    });
+  } catch (error) {
+    console.error('Error fetching user:', {
+      message: error.message,
+      stack: error.stack,
+      userId: req.params.userId,
+    });
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+});
+
+// Upload profile picture
+router.post('/upload-profile-picture', isAuthenticated, upload.single('profilePicture'), async (req, res) => {
   try {
     const user = await User.findById(req.user._id);
     if (!user) {
@@ -91,6 +175,7 @@ router.post('/upload-profile-picture', upload.single('profilePicture'), async (r
       return res.status(400).json({ message: 'No file uploaded.' });
     }
 
+    // File validation
     const allowedTypes = ['image/jpeg', 'image/png'];
     const maxSize = 5 * 1024 * 1024; // 5 MB
     if (!allowedTypes.includes(file.mimetype)) {
@@ -100,13 +185,16 @@ router.post('/upload-profile-picture', upload.single('profilePicture'), async (r
       return res.status(400).json({ message: 'File size exceeds 5 MB limit.' });
     }
 
-    const fileName = `profile-pics/user-${req.user._id}-${Date.now()}.${file.originalname.split('.').pop()}`;
+    // Generate unique file name
+    const fileExtension = file.originalname.split('.').pop();
+    const fileName = `profile-pics/user-${req.user._id}-${Date.now()}.${fileExtension}`;
+
+    // Upload to S3 without ACL (rely on bucket policy for public access)
     const uploadParams = {
       Bucket: process.env.AWS_S3_BUCKET,
       Key: fileName,
       Body: file.buffer,
       ContentType: file.mimetype,
-      // Note: ACL parameter is removed to avoid the error
     };
 
     const command = new PutObjectCommand(uploadParams);
@@ -115,27 +203,43 @@ router.post('/upload-profile-picture', upload.single('profilePicture'), async (r
 
     const newProfilePictureUrl = `https://${process.env.AWS_S3_BUCKET}.s3.${process.env.AWS_REGION}.amazonaws.com/${fileName}`;
 
-    if (user.profilePicture) {
-      const oldFileKey = user.profilePicture.split('/').slice(-2).join('/');
-      const deleteParams = {
-        Bucket: process.env.AWS_S3_BUCKET,
-        Key: oldFileKey,
-      };
-      const deleteCommand = new DeleteObjectCommand(deleteParams);
-      await s3.send(deleteCommand);
-      console.log(`Deleted old profile picture: ${oldFileKey}`);
+    // Delete old profile picture if it exists
+    if (user.profilePicture && user.profilePicture.startsWith('https://')) {
+      try {
+        const oldFileKey = user.profilePicture.split('/').slice(-2).join('/');
+        const deleteParams = {
+          Bucket: process.env.AWS_S3_BUCKET,
+          Key: oldFileKey,
+        };
+        const deleteCommand = new DeleteObjectCommand(deleteParams);
+        await s3.send(deleteCommand);
+        console.log(`Deleted old profile picture: ${oldFileKey}`);
+      } catch (deleteError) {
+        console.error('Error deleting old profile picture:', {
+          message: deleteError.message,
+          stack: deleteError.stack,
+          oldFileKey: user.profilePicture.split('/').slice(-2).join('/'),
+        });
+        // Continue despite deletion error to ensure the new picture is saved
+      }
     }
 
+    // Update user's profile picture URL
     user.profilePicture = newProfilePictureUrl;
     await user.save();
     console.log('User profile updated with new picture URL:', newProfilePictureUrl);
 
     res.status(200).json({
-      message: 'Profile picture updated successfully.',
-      profilePicture: newProfilePictureUrl,
+      message: 'Profile picture uploaded successfully.',
+      profilePictureUrl: newProfilePictureUrl,
     });
   } catch (err) {
-    console.error('Error uploading profile picture:', err.stack);
+    console.error('Error uploading profile picture:', {
+      message: err.message,
+      stack: err.stack,
+      userId: req.user?._id,
+      file: req.file ? { originalname: req.file.originalname, size: req.file.size, mimetype: req.file.mimetype } : null,
+    });
     res.status(500).json({
       message: 'Failed to upload profile picture.',
       error: err.message,
@@ -144,43 +248,50 @@ router.post('/upload-profile-picture', upload.single('profilePicture'), async (r
 });
 
 // Remove profile picture
-router.post('/remove-profile-picture', async (req, res) => {
-  if (!req.user) {
-    return res.status(401).json({ message: 'Not authenticated' });
-  }
-
+router.post('/remove-profile-picture', isAuthenticated, async (req, res) => {
   try {
     const user = await User.findById(req.user._id);
     if (!user) {
       return res.status(404).json({ message: 'User not found.' });
     }
 
-    if (user.profilePicture) {
-      const fileKey = user.profilePicture.split('/').slice(-2).join('/');
-      const deleteParams = {
-        Bucket: process.env.AWS_S3_BUCKET,
-        Key: fileKey,
-      };
-      const deleteCommand = new DeleteObjectCommand(deleteParams);
-      await s3.send(deleteCommand);
-
-      user.profilePicture = '';
-      await user.save();
+    if (user.profilePicture && user.profilePicture.startsWith('https://')) {
+      try {
+        const fileKey = user.profilePicture.split('/').slice(-2).join('/');
+        const deleteParams = {
+          Bucket: process.env.AWS_S3_BUCKET,
+          Key: fileKey,
+        };
+        const deleteCommand = new DeleteObjectCommand(deleteParams);
+        await s3.send(deleteCommand);
+        console.log(`Deleted profile picture from S3: ${fileKey}`);
+      } catch (deleteError) {
+        console.error('Error deleting profile picture from S3:', {
+          message: deleteError.message,
+          stack: deleteError.stack,
+          fileKey: user.profilePicture.split('/').slice(-2).join('/'),
+        });
+        // Continue despite deletion error to ensure the field is cleared
+      }
     }
+
+    user.profilePicture = null;
+    await user.save();
+    console.log('User profile picture cleared for user:', req.user._id);
 
     res.status(200).json({ message: 'Profile picture removed successfully.' });
   } catch (err) {
-    console.error('Error removing profile picture:', err.message);
+    console.error('Error removing profile picture:', {
+      message: err.message,
+      stack: err.stack,
+      userId: req.user?._id,
+    });
     res.status(500).json({ message: 'Failed to remove profile picture.', error: err.message });
   }
 });
 
 // Update profile
-router.post('/update-profile', async (req, res) => {
-  if (!req.user) {
-    return res.status(401).json({ message: 'Not authenticated' });
-  }
-
+router.post('/update-profile', isAuthenticated, async (req, res) => {
   try {
     const { firstName, lastName } = req.body;
     if (!firstName || !lastName) {
@@ -195,20 +306,21 @@ router.post('/update-profile', async (req, res) => {
     user.firstName = firstName;
     user.lastName = lastName;
     await user.save();
+    console.log('User profile updated:', { userId: req.user._id, firstName, lastName });
 
     res.status(200).json({ message: 'Profile updated successfully.' });
   } catch (err) {
-    console.error('Error updating profile:', err.message);
+    console.error('Error updating profile:', {
+      message: err.message,
+      stack: err.stack,
+      userId: req.user?._id,
+    });
     res.status(500).json({ message: 'Failed to update profile.', error: err.message });
   }
 });
 
 // Update email
-router.post('/update-email', async (req, res) => {
-  if (!req.user) {
-    return res.status(401).json({ message: 'Not authenticated' });
-  }
-
+router.post('/update-email', isAuthenticated, async (req, res) => {
   try {
     const { email } = req.body;
     if (!email) {
@@ -227,24 +339,33 @@ router.post('/update-email', async (req, res) => {
 
     user.email = email;
     await user.save();
+    console.log('User email updated:', { userId: req.user._id, email });
 
     res.status(200).json({ message: 'Email updated successfully.' });
   } catch (err) {
-    console.error('Error updating email:', err.message);
+    console.error('Error updating email:', {
+      message: err.message,
+      stack: err.stack,
+      userId: req.user?._id,
+    });
     res.status(500).json({ message: 'Failed to update email.', error: err.message });
   }
 });
 
 // Update password
-router.post('/update-password', async (req, res) => {
+router.post('/update-password', isAuthenticated, async (req, res) => {
   const { currentPassword, newPassword } = req.body;
   try {
-    const user = await User.findById(req.user.id);
+    const user = await User.findById(req.user._id);
     if (!user) {
       return res.status(404).json({ message: 'User not found' });
     }
 
     // Verify current password
+    if (!user.password) {
+      return res.status(400).json({ message: 'No password set. Please use password reset.' });
+    }
+
     const isMatch = await bcrypt.compare(currentPassword, user.password);
     if (!isMatch) {
       return res.status(400).json({ message: 'Current password is incorrect' });
@@ -253,64 +374,78 @@ router.post('/update-password', async (req, res) => {
     // Hash new password with the same salt rounds as reset-password (10)
     const hashedPassword = await bcrypt.hash(newPassword, 10);
 
-    // Use updateOne to bypass the pre-save hook
-    await User.updateOne(
-      { _id: user._id },
-      { $set: { password: hashedPassword } }
-    );
+    // Update password
+    user.password = hashedPassword;
+    await user.save();
+    console.log('User password updated:', { userId: req.user._id });
 
     res.json({ message: 'Password updated successfully' });
   } catch (error) {
-    console.error('Error in update-password:', error);
+    console.error('Error in update-password:', {
+      message: error.message,
+      stack: error.stack,
+      userId: req.user?._id,
+    });
     res.status(500).json({ message: 'Server error', error: 'Failed to update password' });
   }
 });
 
-
 // Delete account
-router.post('/delete-account', async (req, res) => {
-  if (!req.user) {
-    return res.status(401).json({ message: 'Not authenticated' });
-  }
-
+router.post('/delete-account', isAuthenticated, async (req, res) => {
   try {
     const user = await User.findById(req.user._id);
     if (!user) {
       return res.status(404).json({ message: 'User not found.' });
     }
 
-    if (user.profilePicture) {
-      const fileKey = user.profilePicture.split('/').slice(-2).join('/');
-      const deleteParams = {
-        Bucket: process.env.AWS_S3_BUCKET,
-        Key: fileKey,
-      };
-      const deleteCommand = new DeleteObjectCommand(deleteParams);
-      await s3.send(deleteCommand);
+    // Delete profile picture from S3 if it exists
+    if (user.profilePicture && user.profilePicture.startsWith('https://')) {
+      try {
+        const fileKey = user.profilePicture.split('/').slice(-2).join('/');
+        const deleteParams = {
+          Bucket: process.env.AWS_S3_BUCKET,
+          Key: fileKey,
+        };
+        const deleteCommand = new DeleteObjectCommand(deleteParams);
+        await s3.send(deleteCommand);
+        console.log(`Deleted profile picture from S3: ${fileKey}`);
+      } catch (deleteError) {
+        console.error('Error deleting profile picture during account deletion:', {
+          message: deleteError.message,
+          stack: deleteError.stack,
+          fileKey: user.profilePicture.split('/').slice(-2).join('/'),
+        });
+        // Continue despite deletion error to ensure the account is deleted
+      }
     }
 
     await User.findByIdAndDelete(req.user._id);
+    console.log('User account deleted:', { userId: req.user._id, email: user.email });
 
     setImmediate(async () => {
       try {
         await sendDeletionEmail(user.email);
       } catch (emailError) {
-        console.error('Error sending deletion email:', emailError);
+        console.error('Error sending deletion email:', {
+          message: emailError.message,
+          stack: emailError.stack,
+        });
       }
     });
 
     res.status(200).json({ message: 'Account deleted successfully.' });
   } catch (err) {
-    console.error('Error deleting account:', err.message);
+    console.error('Error deleting account:', {
+      message: err.message,
+      stack: err.stack,
+      userId: req.user?._id,
+    });
     res.status(500).json({ message: 'Failed to delete account.', error: err.message });
   }
 });
 
 // Approve user (superadmin only)
-router.post('/approve-user', async (req, res) => {
-  if (!req.user || req.user.role !== 'superadmin') {
-    return res.status(403).json({ message: 'Access denied. Insufficient permissions.' });
-  }
+router.post('/approve-user', isAuthenticated, isSuperAdmin, async (req, res) => {
   const { userId, role } = req.body;
   try {
     const user = await User.findById(userId);
@@ -327,43 +462,48 @@ router.post('/approve-user', async (req, res) => {
       accountSettings: true,
     };
     await user.save();
+    console.log('User approved:', { userId, role });
 
     setImmediate(async () => {
       try {
         await sendApprovalEmail(user.email);
       } catch (emailError) {
-        console.error('Error sending approval email:', emailError);
+        console.error('Error sending approval email:', {
+          message: emailError.message,
+          stack: emailError.stack,
+        });
       }
     });
 
     res.json({ message: 'User approved successfully' });
   } catch (error) {
-    console.error('Error approving user:', error.message);
+    console.error('Error approving user:', {
+      message: error.message,
+      stack: error.stack,
+      userId,
+    });
     res.status(500).json({ message: 'Approval failed', error: error.message });
   }
 });
 
 // Get approved members (superadmin only)
-router.get('/members', async (req, res) => {
-  if (!req.user || req.user.role !== 'superadmin') {
-    return res.status(403).json({ message: 'Access denied. Insufficient permissions.' });
-  }
+router.get('/members', isAuthenticated, isSuperAdmin, async (req, res) => {
   try {
     const users = await User.find({ isApproved: true })
       .select('firstName lastName email role createdAt accessPermissions')
       .lean();
     res.json(users);
   } catch (error) {
-    console.error('Error fetching members:', error.message);
+    console.error('Error fetching members:', {
+      message: error.message,
+      stack: error.stack,
+    });
     res.status(500).json({ message: 'Error fetching members', error: error.message });
   }
 });
 
 // Update user (superadmin only)
-router.put('/update-user', async (req, res) => {
-  if (!req.user || req.user.role !== 'superadmin') {
-    return res.status(403).json({ message: 'Access denied. Insufficient permissions.' });
-  }
+router.put('/update-user', isAuthenticated, isSuperAdmin, async (req, res) => {
   const { userId, firstName, lastName, role, password } = req.body;
   try {
     const updateFields = {};
@@ -379,18 +519,21 @@ router.put('/update-user', async (req, res) => {
     if (user.matchedCount === 0) {
       return res.status(404).json({ message: 'User not found' });
     }
+    console.log('User updated:', { userId, firstName, lastName, role });
+
     res.json({ message: 'User updated successfully' });
   } catch (error) {
-    console.error('Error updating user:', error.message);
+    console.error('Error updating user:', {
+      message: error.message,
+      stack: error.stack,
+      userId,
+    });
     res.status(500).json({ message: 'Update failed', error: error.message });
   }
 });
 
 // Update access permissions (superadmin only)
-router.put('/update-access', async (req, res) => {
-  if (!req.user || req.user.role !== 'superadmin') {
-    return res.status(403).json({ message: 'Access denied. Insufficient permissions.' });
-  }
+router.put('/update-access', isAuthenticated, isSuperAdmin, async (req, res) => {
   const { userId, accessPermissions } = req.body;
   try {
     const user = await User.updateOne(
@@ -400,54 +543,69 @@ router.put('/update-access', async (req, res) => {
     if (user.matchedCount === 0) {
       return res.status(404).json({ message: 'User not found' });
     }
+    console.log('User access permissions updated:', { userId, accessPermissions });
+
     res.json({ message: 'User access updated successfully' });
   } catch (error) {
-    console.error('Error updating access:', error.message);
+    console.error('Error updating access:', {
+      message: error.message,
+      stack: error.stack,
+      userId,
+    });
     res.status(500).json({ message: 'Update failed', error: error.message });
   }
 });
 
 // Get pending users (admin or superadmin)
-router.get('/pending-users', async (req, res) => {
-  if (!req.user || !['superadmin', 'admin'].includes(req.user.role)) {
-    return res.status(403).json({ message: 'Access denied. Insufficient permissions.' });
-  }
+router.get('/pending-users', isAuthenticated, isAdminOrSuperAdmin, async (req, res) => {
   try {
     const users = await User.find({ isApproved: false })
       .select('firstName lastName email createdAt')
       .lean();
     res.json(users);
   } catch (error) {
-    console.error('Error fetching pending users:', error.message);
+    console.error('Error fetching pending users:', {
+      message: error.message,
+      stack: error.stack,
+    });
     res.status(500).json({ message: 'Error fetching pending users', error: error.message });
   }
 });
 
 // Reject user (superadmin only)
-router.post('/reject-user', async (req, res) => {
-  if (!req.user || req.user.role !== 'superadmin') {
-    return res.status(403).json({ message: 'Access denied. Insufficient permissions.' });
-  }
+router.post('/reject-user', isAuthenticated, isSuperAdmin, async (req, res) => {
   const { userId } = req.body;
   try {
     const user = await User.findByIdAndDelete(userId);
     if (!user) {
       return res.status(404).json({ message: 'User not found' });
     }
-    await sendRejectionEmail(user.email);
+    console.log('User rejected and removed:', { userId, email: user.email });
+
+    setImmediate(async () => {
+      try {
+        await sendRejectionEmail(user.email);
+      } catch (emailError) {
+        console.error('Error sending rejection email:', {
+          message: emailError.message,
+          stack: emailError.stack,
+        });
+      }
+    });
+
     res.json({ message: 'User rejected and removed' });
   } catch (error) {
-    console.error('Error rejecting user:', error.message);
+    console.error('Error rejecting user:', {
+      message: error.message,
+      stack: error.stack,
+      userId,
+    });
     res.status(500).json({ message: 'Rejection failed', error: error.message });
   }
 });
 
-// Delete user
-router.delete('/delete-user/:userId', async (req, res) => {
-  if (!req.user) {
-    return res.status(401).json({ message: 'Not authenticated' });
-  }
-
+// Delete user (admin or superadmin)
+router.delete('/delete-user/:userId', isAuthenticated, isAdminOrSuperAdmin, async (req, res) => {
   const { userId } = req.params;
   try {
     const userToDelete = await User.findById(userId);
@@ -462,19 +620,48 @@ router.delete('/delete-user/:userId', async (req, res) => {
       return res.status(403).json({ message: 'Admins cannot delete superadmin members' });
     }
 
+    // Delete profile picture from S3 if it exists
+    if (userToDelete.profilePicture && userToDelete.profilePicture.startsWith('https://')) {
+      try {
+        const fileKey = userToDelete.profilePicture.split('/').slice(-2).join('/');
+        const deleteParams = {
+          Bucket: process.env.AWS_S3_BUCKET,
+          Key: fileKey,
+        };
+        const deleteCommand = new DeleteObjectCommand(deleteParams);
+        await s3.send(deleteCommand);
+        console.log(`Deleted profile picture from S3: ${fileKey}`);
+      } catch (deleteError) {
+        console.error('Error deleting profile picture during user deletion:', {
+          message: deleteError.message,
+          stack: deleteError.stack,
+          fileKey: userToDelete.profilePicture.split('/').slice(-2).join('/'),
+        });
+        // Continue despite deletion error to ensure the user is deleted
+      }
+    }
+
     await User.findByIdAndDelete(userId);
+    console.log('User deleted:', { userId, email: userToDelete.email });
 
     setImmediate(async () => {
       try {
         await sendDeletionEmail(userToDelete.email);
       } catch (emailError) {
-        console.error('Error sending deletion email:', emailError);
+        console.error('Error sending deletion email:', {
+          message: emailError.message,
+          stack: emailError.stack,
+        });
       }
     });
 
     res.json({ message: 'User deleted successfully' });
   } catch (error) {
-    console.error('Error deleting user:', error.message);
+    console.error('Error deleting user:', {
+      message: error.message,
+      stack: error.stack,
+      userId,
+    });
     res.status(500).json({ message: 'Deletion failed', error: error.message });
   }
 });

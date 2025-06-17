@@ -1,6 +1,4 @@
-// Load environment variables first to ensure they are available globally
 require('dotenv').config();
-
 const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
@@ -11,7 +9,11 @@ const userManagementRoutes = require('./routes/auth/userManagement');
 const MongoStore = require('connect-mongo');
 const https = require('https');
 const fs = require('fs');
+const partnerRoutes = require('./routes/api/partners');
 const patchNotesRoutes = require('./routes/api/patchNotes');
+const inventoryRoutes = require('./routes/api/inventory');
+const { s3Client } = require('./s3config');
+const { HeadBucketCommand } = require('@aws-sdk/client-s3');
 
 const app = express();
 
@@ -48,10 +50,10 @@ app.use(
       collectionName: 'sessions',
     }),
     cookie: {
-      secure: isDevelopment ? false : true, // Allow non-secure cookies in development
+      secure: isDevelopment ? false : true,
       maxAge: 24 * 60 * 60 * 1000, // 24 hours
       httpOnly: true,
-      sameSite: isDevelopment ? 'lax' : 'none', // Use 'lax' in development
+      sameSite: isDevelopment ? 'lax' : 'none',
       domain: 'localhost',
       path: '/',
     },
@@ -63,11 +65,33 @@ require('./passport');
 app.use(passport.initialize());
 app.use(passport.session());
 
+// Make S3 client available to routes
+app.use((req, res, next) => {
+  req.s3Client = s3Client;
+  next();
+});
+
+// Test route to verify S3 connectivity
+app.get('/test-s3', async (req, res) => {
+  try {
+    const command = new HeadBucketCommand({ Bucket: process.env.AWS_S3_BUCKET });
+    await s3Client.send(command);
+    res.json({ message: 'S3 connectivity test successful' });
+  } catch (err) {
+    console.error('S3 connectivity test failed:', {
+      message: err.message,
+      stack: err.stack,
+    });
+    res.status(500).json({ message: 'S3 connectivity test failed', error: err.message });
+  }
+});
+
 // Mount routes
 app.use('/auth', authRoutes);
 app.use('/api', userManagementRoutes);
 app.use('/api/patch-notes', patchNotesRoutes);
-
+app.use('/api/inventory', inventoryRoutes);
+app.use('/api/partners', partnerRoutes);
 
 // Add middleware to log session details for debugging
 app.use((req, res, next) => {

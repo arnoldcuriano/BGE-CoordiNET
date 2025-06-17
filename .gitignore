@@ -16911,3 +16911,4 @@ dist
 .env
 node_modules/
 >>>>>>> development
+backend/uploads/

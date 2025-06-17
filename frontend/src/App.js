@@ -1,57 +1,66 @@
-import React, { useState, useMemo, useEffect } from 'react';
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
-import { ThemeProvider as MuiThemeProvider } from '@mui/material/styles';
-import CssBaseline from '@mui/material/CssBaseline';
-import { ThemeProvider } from './context/ThemeContext';
-import { AuthProvider } from './context/AuthContext';
-import ProtectedRoute from './components/ProtectedRoute';
-import ErrorBoundary from './components/ErrorBoundary';
-import Login from './pages/Login';
-import Signup from './pages/Signup';
-import ForgotPassword from './pages/ForgotPassword';
-import ResetPassword from './pages/ResetPassword';
-import Dashboard from './pages/Dashboard';
-import Welcome from './pages/Welcome';
-import Members from './pages/Members';
-import Partners from './pages/Partners';
-import HRManagement from './pages/HRManagement';
-import Projects from './pages/Projects';
-import ITInventory from './pages/ITInventory';
-import QuickTools from './pages/QuickTools';
-import SuperAdminDashboard from './pages/SuperAdminDashboard';
-import ProfileSettings from './pages/ProfileSettings';
-import AccountSettings from './pages/AccountSettings';
-import NoAccess from './pages/NoAccess';
-import PlaceholderPage from './pages/PlaceholderPage';
-import PatchNotes from './pages/PatchNotes';
-import getMuiTheme from './styles/muiTheme';
+import React, { useState, useMemo, useEffect } from "react";
+import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
+import { ThemeProvider as MuiThemeProvider } from "@mui/material/styles";
+import CssBaseline from "@mui/material/CssBaseline";
+import { ThemeProvider } from "./context/ThemeContext";
+import { AuthProvider } from "./context/AuthContext";
+import ProtectedRoute from "./components/ProtectedRoute";
+import ErrorBoundary from "./components/errorBoundary";
+import Layout from "./components/Layout";
+import Login from "./pages/Login";
+import Signup from "./pages/Signup";
+import ForgotPassword from "./pages/ForgotPassword";
+import ResetPassword from "./pages/ResetPassword";
+import Dashboard from "./pages/Dashboard";
+import Welcome from "./pages/Welcome";
+import Members from "./pages/Members";
+import Partners from "./pages/Partners";
+import HRManagement from "./pages/HRManagement";
+import Projects from "./pages/Projects";
+import ITInventory from "./pages/ITInventory";
+import QuickTools from "./pages/QuickTools";
+import SuperAdminDashboard from "./pages/SuperAdminDashboard";
+import ManagePatchNotes from "./pages/ManagePatchNotes"; // Import ManagePatchNotes
+import ProfileSettings from "./pages/ProfileSettings";
+import AccountSettings from "./pages/AccountSettings";
+import NoAccess from "./pages/NoAccess";
+import PlaceholderPage from "./pages/PlaceholderPage";
+import PatchNotes from "./pages/PatchNotes";
+import getMuiTheme from "./styles/muiTheme";
 
 const App = () => {
   const [isDarkMode, setIsDarkMode] = useState(() => {
-    const savedTheme = localStorage.getItem('theme');
-    const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-    const initialMode = savedTheme ? savedTheme === 'dark' : prefersDark;
-    console.log('App.js: Initial isDarkMode:', initialMode);
+    const savedTheme = localStorage.getItem("theme");
+    const prefersDark = window.matchMedia(
+      "(prefers-color-scheme: dark)"
+    ).matches;
+    const initialMode = savedTheme ? savedTheme === "dark" : prefersDark;
+    console.log("App.js: Initial isDarkMode:", initialMode);
     return initialMode;
   });
 
   useEffect(() => {
-    localStorage.setItem('theme', isDarkMode ? 'dark' : 'light');
-    console.log('App.js: Saved isDarkMode to localStorage:', isDarkMode);
+    localStorage.setItem("theme", isDarkMode ? "dark" : "light");
+    console.log("App.js: Saved isDarkMode to localStorage:", isDarkMode);
   }, [isDarkMode]);
 
   const toggleTheme = () => {
     setIsDarkMode((prev) => {
       const newMode = !prev;
-      console.log('App.js: Toggled isDarkMode to:', newMode);
+      console.log("App.js: Toggled isDarkMode to:", newMode);
       return newMode;
     });
   };
 
   const muiTheme = useMemo(() => {
     const theme = getMuiTheme(isDarkMode);
-    console.log('App.js: muiTheme updated, text.primary:', theme.palette.text.primary, 'text.secondary:', theme.palette.text.secondary);
-    console.log('App.js: muiTheme.transitions:', theme.transitions);
+    console.log(
+      "App.js: muiTheme updated, text.primary:",
+      theme.palette.text.primary,
+      "text.secondary:",
+      theme.palette.text.secondary
+    );
+    console.log("App.js: muiTheme.transitions:", theme.transitions);
     return theme;
   }, [isDarkMode]);
 
@@ -62,29 +71,107 @@ const App = () => {
     { path: "/reset-password", element: <ResetPassword />, isPublic: true },
     { path: "/welcome", element: <Welcome /> },
     { path: "/dashboard", element: <Dashboard />, pageKey: "dashboard" },
-    { path: "/hr-management/members", element: <Members />, pageKey: "hrManagement" },
-    { path: "/partners", element: <Partners />, pageKey: "partners" },
-    { path: "/hr-management", element: <HRManagement />, pageKey: "hrManagement" },
-    { path: "/finance-management", element: <PlaceholderPage pageName="Finance Management" />, pageKey: "financeManagement" },
-    { path: "/finance-management/members-list", element: <PlaceholderPage pageName="Finance Management" />, pageKey: "financeManagement" },
-    { path: "/projects", element: <Projects />, pageKey: "projects" },
-    { path: "/projects/active", element: <Projects />, pageKey: "projects" },
-    { path: "/projects/archived", element: <Projects />, pageKey: "projects" },
-    { path: "/it-inventory", element: <ITInventory />, pageKey: "itInventory" },
-    { path: "/quick-tools", element: <QuickTools />, pageKey: "quickTools" },
-    { 
-      path: "/superadmin-dashboard/*", // Add wildcard to allow nested routes
-      element: <ErrorBoundary><SuperAdminDashboard /></ErrorBoundary>, 
-      pageKey: "superadminDashboard" 
+    {
+      path: "/hr-management/members",
+      element: <PlaceholderPage pageName="Members" />,
+      pageKey: "hrManagement",
     },
-    { path: "/profile-settings", element: <ProfileSettings />, pageKey: "settings" },
-    { path: "/account-settings", element: <AccountSettings />, pageKey: "settings" },
+    { path: "/partners", element: <Partners />, pageKey: "partners" },
+    {
+      path: "/hr-management",
+      element: <PlaceholderPage pageName="HRManagement" />,
+      pageKey: "hrManagement",
+    },
+    {
+      path: "/finance-management",
+      element: <PlaceholderPage pageName="Finance Management" />,
+      pageKey: "financeManagement",
+    },
+    {
+      path: "/finance-management/members-list",
+      element: <PlaceholderPage pageName="Finance Management" />,
+      pageKey: "financeManagement",
+    },
+    {
+      path: "/projects",
+      element: <PlaceholderPage pageName="Projects" />,
+      pageKey: "projects",
+    },
+    {
+      path: "/projects/active",
+      element: <PlaceholderPage pageName="Projects" />,
+      pageKey: "projects",
+    },
+    {
+      path: "/projects/archived",
+      element: <PlaceholderPage pageName="Projects" />,
+      pageKey: "projects",
+    },
+    { path: "/it-inventory", element: <ITInventory />, pageKey: "itInventory" },
+    {
+      path: "/quick-tools",
+      element: <PlaceholderPage pageName="QuickTools" />,
+      pageKey: "quickTools",
+    },
+    {
+      path: "/superadmin-dashboard",
+      element: (
+        <ErrorBoundary>
+          <SuperAdminDashboard />
+        </ErrorBoundary>
+      ),
+      pageKey: "superadminDashboard",
+    },
+    {
+      path: "/superadmin-dashboard/patch-notes",
+      element: (
+        <ErrorBoundary>
+          <ManagePatchNotes />
+        </ErrorBoundary>
+      ),
+      pageKey: "superadminDashboard",
+    },
+    {
+      path: "/profile-settings",
+      element: <ProfileSettings />,
+      pageKey: "settings",
+    },
+    {
+      path: "/account-settings",
+      element: <AccountSettings />,
+      pageKey: "settings",
+    },
     { path: "/no-access", element: <NoAccess /> },
-    { path: "/help", element: <PlaceholderPage pageName="Help" />, pageKey: "help" },
+    {
+      path: "/help",
+      element: <PlaceholderPage pageName="Help" />,
+      pageKey: "help",
+    },
     { path: "/patch-notes", element: <PatchNotes />, pageKey: "patchNotes" },
-    { path: "/analytics", element: <PlaceholderPage pageName="Analytics" />, pageKey: "analytics" },
-    { path: "/*", element: <PlaceholderPage pageName="Not Found" />, pageKey: "notFound" },
+    {
+      path: "/analytics",
+      element: <PlaceholderPage pageName="Analytics" />,
+      pageKey: "analytics",
+    },
+    {
+      path: "/*",
+      element: <PlaceholderPage pageName="Not Found" />,
+      pageKey: "notFound",
+    },
   ];
+
+  const publicRoutes = routes.filter((route) => route.isPublic);
+  const protectedRoutes = routes.filter((route) => !route.isPublic);
+
+  // Log the routes for debugging
+  console.log(
+    "App.js: Public Routes:",
+    publicRoutes.map((r) => r.path)
+  );
+  console.log(
+    "App.js: Protected Routes:",
+    protectedRoutes.map((r) => r.path)
+  );
 
   return (
     <ThemeProvider value={{ isDarkMode, toggleTheme, muiTheme }}>
@@ -93,7 +180,8 @@ const App = () => {
         <AuthProvider>
           <Router>
             <Routes>
-              {routes.map(({ path, element, isPublic, pageKey }) => (
+              {/* Public Routes (No Layout) */}
+              {publicRoutes.map(({ path, element, isPublic, pageKey }) => (
                 <Route
                   key={path}
                   path={path}
@@ -101,6 +189,20 @@ const App = () => {
                     <ProtectedRoute isPublic={isPublic} pageKey={pageKey}>
                       {element}
                     </ProtectedRoute>
+                  }
+                />
+              ))}
+              {/* Protected Routes (With Layout) */}
+              {protectedRoutes.map(({ path, element, isPublic, pageKey }) => (
+                <Route
+                  key={path}
+                  path={path}
+                  element={
+                    <Layout>
+                      <ProtectedRoute isPublic={isPublic} pageKey={pageKey}>
+                        {element}
+                      </ProtectedRoute>
+                    </Layout>
                   }
                 />
               ))}

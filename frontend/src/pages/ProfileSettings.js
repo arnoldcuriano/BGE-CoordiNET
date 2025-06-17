@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from 'react';
-import { useAuth } from '../context/AuthContext';
-import { useTheme } from '../context/ThemeContext';
-import api from '../api';
+import React, { useState, useEffect } from "react";
+import { useAuth } from "../context/AuthContext";
+import { useTheme } from "../context/ThemeContext";
+import api from "../api";
 import {
   Typography,
   TextField,
@@ -13,10 +13,10 @@ import {
   DialogContent,
   DialogActions,
   CircularProgress,
+  Toolbar,
   keyframes,
-} from '@mui/material';
-import Layout from '../components/Layout';
-import CustomSnackbar from '../components/CustomSnackbar';
+} from "@mui/material";
+import CustomSnackbar from "../components/CustomSnackbar";
 
 // Define animations
 const fadeIn = keyframes`
@@ -34,31 +34,40 @@ const ProfileSettings = () => {
   const { authState, updateUser } = useAuth();
   const { muiTheme, isDarkMode } = useTheme();
   const [isEditing, setIsEditing] = useState(false);
-  const [firstName, setFirstName] = useState(authState.firstName || '');
-  const [lastName, setLastName] = useState(authState.lastName || '');
-  const [email, setEmail] = useState(authState.email || '');
-  const [profilePicture, setProfilePicture] = useState(authState.profilePicture || '');
+  const [firstName, setFirstName] = useState(authState.firstName || "");
+  const [lastName, setLastName] = useState(authState.lastName || "");
+  const [email, setEmail] = useState(authState.email || "");
+  const [profilePicture, setProfilePicture] = useState(
+    authState.profilePicture || ""
+  );
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(null);
   const [modalOpen, setModalOpen] = useState(false);
   const [modalAction, setModalAction] = useState(null);
-  const [originalFirstName, setOriginalFirstName] = useState('');
-  const [originalLastName, setOriginalLastName] = useState('');
+  const [originalFirstName, setOriginalFirstName] = useState("");
+  const [originalLastName, setOriginalLastName] = useState("");
 
-  const greenLightColor = '#34A853';
-  const greenLightHoverBackground = 'rgba(52, 168, 83, 0.1)';
-  const hoverBackground = isDarkMode ? 'rgba(255, 255, 255, 0.15)' : greenLightHoverBackground;
+  const greenLightColor = "#34A853";
+  const greenLightHoverBackground = "rgba(52, 168, 83, 0.1)";
+  const hoverBackground = isDarkMode
+    ? "rgba(255, 255, 255, 0.15)"
+    : greenLightHoverBackground;
+
+  // Sync local profilePicture state with authState.profilePicture
+  useEffect(() => {
+    setProfilePicture(authState.profilePicture || "");
+  }, [authState.profilePicture]);
 
   useEffect(() => {
     if (!authState.isAuthenticated) {
-      setError('Failed to load user data. Please log in again.');
+      setError("Failed to load user data. Please log in again.");
     }
   }, [authState]);
 
   const handleEditToggle = () => {
     if (isEditing) {
-      setModalAction('cancel');
+      setModalAction("cancel");
       setModalOpen(true);
     } else {
       setOriginalFirstName(firstName);
@@ -68,28 +77,34 @@ const ProfileSettings = () => {
   };
 
   const handleSave = () => {
-    setModalAction('save');
+    setModalAction("save");
     setModalOpen(true);
   };
 
   const confirmAction = async () => {
-    if (modalAction === 'save') {
+    if (modalAction === "save") {
       setLoading(true);
       setSuccess(null);
       setError(null);
       try {
-        console.log('ProfileSettings: Saving profile, API instance:', api);
-        const response = await api.post('/update-profile', { firstName, lastName }); // Remove leading /api
+        console.log("ProfileSettings: Saving profile, API instance:", api);
+        const response = await api.post("/update-profile", {
+          firstName,
+          lastName,
+        });
         await updateUser({ firstName, lastName });
-        setSuccess(response.data.message || 'Profile updated successfully');
+        setSuccess(response.data.message || "Profile updated successfully");
         setIsEditing(false);
       } catch (err) {
-        console.error('ProfileSettings: Error saving profile:', err);
-        setError(err.response?.data?.message || 'Failed to update user details');
+        console.error("ProfileSettings: Error saving profile:", err);
+        setError(
+          err.response?.data?.message ||
+            "Failed to update user details. Please try again."
+        );
       } finally {
         setLoading(false);
       }
-    } else if (modalAction === 'cancel') {
+    } else if (modalAction === "cancel") {
       setFirstName(originalFirstName);
       setLastName(originalLastName);
       setIsEditing(false);
@@ -104,17 +119,38 @@ const ProfileSettings = () => {
       setSuccess(null);
       setError(null);
       const formData = new FormData();
-      formData.append('profilePicture', file);
+      formData.append("profilePicture", file);
       try {
-        console.log('ProfileSettings: Uploading file, API instance:', api);
-        const response = await api.post('/upload-profile-picture', formData); // Remove leading /api
-        const newProfilePictureUrl = response.data.profilePicture || authState.profilePicture;
+        console.log("ProfileSettings: Uploading file, API instance:", api);
+        const response = await api.post("/upload-profile-picture", formData, {
+          headers: { "Content-Type": "multipart/form-data" },
+        });
+        const newProfilePictureUrl =
+          response.data.profilePictureUrl || authState.profilePicture;
         setProfilePicture(newProfilePictureUrl);
         await updateUser({ profilePicture: newProfilePictureUrl });
-        setSuccess(response.data.message || 'Profile picture updated successfully');
+
+        // Fetch the latest user data to ensure authState is up-to-date
+        const userResponse = await api.get("/user");
+        await updateUser({
+          firstName: userResponse.data.firstName,
+          lastName: userResponse.data.lastName,
+          email: userResponse.data.email,
+          profilePicture: userResponse.data.profilePicture,
+          role: userResponse.data.role,
+          isApproved: userResponse.data.isApproved,
+          accessPermissions: userResponse.data.accessPermissions,
+        });
+
+        setSuccess(
+          response.data.message || "Profile picture updated successfully"
+        );
       } catch (err) {
-        console.error('ProfileSettings: Error uploading profile picture:', err);
-        setError(err.response?.data?.message || 'Failed to upload profile picture');
+        console.error("ProfileSettings: Error uploading profile picture:", err);
+        setError(
+          err.response?.data?.message ||
+            "Failed to upload profile picture. Please try again."
+        );
       } finally {
         setLoading(false);
       }
@@ -126,63 +162,135 @@ const ProfileSettings = () => {
     setSuccess(null);
     setError(null);
     try {
-      console.log('ProfileSettings: Removing picture, API instance:', api);
-      await api.post('/remove-profile-picture'); // Remove leading /api
-      setProfilePicture('');
-      await updateUser({ profilePicture: '' });
-      setSuccess('Profile picture removed successfully');
+      console.log("ProfileSettings: Removing picture, API instance:", api);
+      await api.post("/remove-profile-picture");
+      setProfilePicture("");
+      await updateUser({ profilePicture: "" });
+
+      // Fetch the latest user data to ensure authState is up-to-date
+      const userResponse = await api.get("/user");
+      await updateUser({
+        firstName: userResponse.data.firstName,
+        lastName: userResponse.data.lastName,
+        email: userResponse.data.email,
+        profilePicture: userResponse.data.profilePicture,
+        role: userResponse.data.role,
+        isApproved: userResponse.data.isApproved,
+        accessPermissions: userResponse.data.accessPermissions,
+      });
+
+      setSuccess("Profile picture removed successfully");
     } catch (err) {
-      console.error('ProfileSettings: Error removing profile picture:', err);
-      setError(err.response?.data?.message || 'Failed to remove profile picture');
+      console.error("ProfileSettings: Error removing profile picture:", err);
+      setError(
+        err.response?.data?.message ||
+          "Failed to remove profile picture. Please try again."
+      );
     } finally {
       setLoading(false);
     }
   };
 
-  if (authState.loading) return <CircularProgress />;
-  if (!authState.isAuthenticated) return <Typography>Please log in to view your profile settings.</Typography>;
-
-  return (
-    <Layout>
+  if (authState.loading) {
+    return (
       <Box
         sx={{
-          minHeight: '100vh',
+          display: "flex",
+          justifyContent: "center",
+          alignItems: "center",
+          height: "100vh",
+        }}
+      >
+        <CircularProgress />
+      </Box>
+    );
+  }
+
+  if (!authState.isAuthenticated) {
+    return (
+      <Box
+        sx={{
+          minHeight: "100vh",
           background: muiTheme.custom.gradients.backgroundDefault,
           p: { xs: 2, sm: 3, md: 4 },
-          position: 'relative',
-          overflow: 'hidden',
+          position: "relative",
+          overflow: "hidden",
           animation: `${fadeIn} 0.8s ease-out`,
         }}
       >
         <Box
           sx={{
-            position: 'absolute',
+            position: "absolute",
             top: 0,
             left: 0,
-            width: '100%',
-            height: '100%',
+            width: "100%",
+            height: "100%",
             background: isDarkMode
-              ? 'radial-gradient(circle at 30% 30%, rgba(66, 133, 244, 0.2) 0%, transparent 70%)'
-              : 'radial-gradient(circle at 30% 30%, rgba(52, 168, 83, 0.2) 0%, transparent 70%)',
+              ? "radial-gradient(circle at 30% 30%, rgba(66, 133, 244, 0.2) 0%, transparent 70%)"
+              : "radial-gradient(circle at 30% 30%, rgba(52, 168, 83, 0.2) 0%, transparent 70%)",
             zIndex: 0,
           }}
         />
+        <Box sx={{ position: "relative", zIndex: 1 }}>
+          <Toolbar />
+          <Typography
+            sx={{
+              fontFamily: "'Poppins', sans-serif",
+              color: muiTheme.palette.text.primary,
+            }}
+          >
+            Please log in to view your profile settings.
+          </Typography>
+        </Box>
+      </Box>
+    );
+  }
+
+  return (
+    <Box
+      sx={{
+        minHeight: "100vh",
+        background: muiTheme.custom.gradients.backgroundDefault,
+        p: { xs: 2, sm: 3, md: 4 },
+        position: "relative",
+        overflow: "hidden",
+        animation: `${fadeIn} 0.8s ease-out`,
+      }}
+    >
+      <Box
+        sx={{
+          position: "absolute",
+          top: 0,
+          left: 0,
+          width: "100%",
+          height: "100%",
+          background: isDarkMode
+            ? "radial-gradient(circle at 30% 30%, rgba(66, 133, 244, 0.2) 0%, transparent 70%)"
+            : "radial-gradient(circle at 30% 30%, rgba(52, 168, 83, 0.2) 0%, transparent 70%)",
+          zIndex: 0,
+        }}
+      />
+      <Box sx={{ position: "relative", zIndex: 1 }}>
+        <Toolbar />
         <Box
           sx={{
-            position: 'relative',
-            zIndex: 1,
-            background: isDarkMode ? 'rgba(255, 255, 255, 0.05)' : 'rgba(255, 255, 255, 0.1)',
-            backdropFilter: isDarkMode ? 'blur(10px)' : 'blur(15px)',
-            borderRadius: '16px',
-            border: isDarkMode ? '1px solid rgba(255, 255, 255, 0.2)' : '1px solid rgba(0, 0, 0, 0.1)',
-            boxShadow: isDarkMode ? '0 4px 12px rgba(0, 0, 0, 0.3)' : '0 4px 12px rgba(0, 0, 0, 0.1)',
-            padding: { xs: '20px', sm: '30px' },
-            mt: { xs: 2, sm: 3 },
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'flex-start',
-            maxWidth: '600px',
-            margin: 'auto',
+            background: isDarkMode
+              ? "rgba(255, 255, 255, 0.05)"
+              : "rgba(255, 255, 255, 0.1)",
+            backdropFilter: isDarkMode ? "blur(10px)" : "blur(15px)",
+            borderRadius: "16px",
+            border: isDarkMode
+              ? "1px solid rgba(255, 255, 255, 0.2)"
+              : "1px solid rgba(0, 0, 0, 0.1)",
+            boxShadow: isDarkMode
+              ? "0 4px 12px rgba(0, 0, 0, 0.3)"
+              : "0 4px 12px rgba(0, 0, 0, 0.1)",
+            padding: { xs: "20px", sm: "30px" },
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "flex-start",
+            maxWidth: "600px",
+            margin: "auto",
           }}
         >
           <Typography
@@ -191,23 +299,23 @@ const ProfileSettings = () => {
             sx={{
               fontFamily: "'Poppins', sans-serif",
               color: muiTheme.palette.primary.main,
-              fontWeight: 'bold',
-              textAlign: 'left',
+              fontWeight: "bold",
+              textAlign: "left",
             }}
           >
             Profile Settings
           </Typography>
-          <Box sx={{ display: 'flex', alignItems: 'center', mb: 3 }}>
+          <Box sx={{ display: "flex", alignItems: "center", mb: 3 }}>
             <Avatar
               src={profilePicture}
               alt="Profile Picture"
               sx={{ width: 100, height: 100, mr: 2 }}
             >
-              {!profilePicture && 'N/A'}
+              {!profilePicture && "N/A"}
             </Avatar>
             <input
               accept="image/*"
-              style={{ display: 'none' }}
+              style={{ display: "none" }}
               id="upload-profile-picture"
               type="file"
               onChange={handleFileUpload}
@@ -217,14 +325,14 @@ const ProfileSettings = () => {
                 variant="outlined"
                 component="span"
                 sx={{
-                  color: 'inherit',
-                  borderColor: 'inherit',
-                  transition: 'all 0.3s ease',
-                  '&:hover': {
+                  color: "inherit",
+                  borderColor: "inherit",
+                  transition: "all 0.3s ease",
+                  "&:hover": {
                     borderColor: greenLightColor,
                     backgroundColor: hoverBackground,
                     color: greenLightColor,
-                    transform: 'scale(1.05)',
+                    transform: "scale(1.05)",
                   },
                 }}
               >
@@ -237,12 +345,12 @@ const ProfileSettings = () => {
                 onClick={handleRemovePicture}
                 sx={{
                   ml: 2,
-                  backgroundColor: 'rgb(244, 67, 54)',
-                  color: 'white',
-                  transition: 'all 0.3s ease',
-                  '&:hover': {
-                    backgroundColor: 'rgb(211, 47, 47)',
-                    transform: 'scale(1.05)',
+                  backgroundColor: "rgb(244, 67, 54)",
+                  color: "white",
+                  transition: "all 0.3s ease",
+                  "&:hover": {
+                    backgroundColor: "rgb(211, 47, 47)",
+                    transform: "scale(1.05)",
                   },
                 }}
               >
@@ -251,7 +359,7 @@ const ProfileSettings = () => {
             )}
           </Box>
           {isEditing ? (
-            <Box sx={{ width: '100%' }}>
+            <Box sx={{ width: "100%" }}>
               <TextField
                 label="First Name"
                 value={firstName}
@@ -260,18 +368,33 @@ const ProfileSettings = () => {
                 margin="normal"
                 variant="outlined"
                 sx={{
-                  '& .MuiOutlinedInput-root': {
-                    borderRadius: '8px',
+                  "& .MuiOutlinedInput-root": {
+                    borderRadius: "8px",
                     background: muiTheme.palette.background.listItem,
-                    transition: 'all 0.3s ease',
-                    '& fieldset': { borderColor: muiTheme.palette.border.main },
-                    '&:hover fieldset': { borderColor: greenLightColor },
-                    '&:hover': { transform: 'translateY(-2px)', boxShadow: muiTheme.custom?.shadow?.listItem },
-                    '&.Mui-focused fieldset': { borderColor: greenLightColor, boxShadow: `0 0 8px ${greenLightColor}33` },
-                    '&.Mui-focused': { transform: 'translateY(-2px)', boxShadow: muiTheme.custom?.shadow?.listItem },
+                    transition: "all 0.3s ease",
+                    "& fieldset": { borderColor: muiTheme.palette.border.main },
+                    "&:hover fieldset": { borderColor: greenLightColor },
+                    "&:hover": {
+                      transform: "translateY(-2px)",
+                      boxShadow: muiTheme.custom?.shadow?.listItem,
+                    },
+                    "&.Mui-focused fieldset": {
+                      borderColor: greenLightColor,
+                      boxShadow: `0 0 8px ${greenLightColor}33`,
+                    },
+                    "&.Mui-focused": {
+                      transform: "translateY(-2px)",
+                      boxShadow: muiTheme.custom?.shadow?.listItem,
+                    },
                   },
-                  '& .MuiInputLabel-root': { fontFamily: "'Poppins', sans-serif", color: muiTheme.palette.text.secondary },
-                  '& .MuiInputBase-input': { fontFamily: "'Poppins', sans-serif", color: muiTheme.palette.text.primary },
+                  "& .MuiInputLabel-root": {
+                    fontFamily: "'Poppins', sans-serif",
+                    color: muiTheme.palette.text.secondary,
+                  },
+                  "& .MuiInputBase-input": {
+                    fontFamily: "'Poppins', sans-serif",
+                    color: muiTheme.palette.text.primary,
+                  },
                 }}
               />
               <TextField
@@ -282,18 +405,33 @@ const ProfileSettings = () => {
                 margin="normal"
                 variant="outlined"
                 sx={{
-                  '& .MuiOutlinedInput-root': {
-                    borderRadius: '8px',
+                  "& .MuiOutlinedInput-root": {
+                    borderRadius: "8px",
                     background: muiTheme.palette.background.listItem,
-                    transition: 'all 0.3s ease',
-                    '& fieldset': { borderColor: muiTheme.palette.border.main },
-                    '&:hover fieldset': { borderColor: greenLightColor },
-                    '&:hover': { transform: 'translateY(-2px)', boxShadow: muiTheme.custom?.shadow?.listItem },
-                    '&.Mui-focused fieldset': { borderColor: greenLightColor, boxShadow: `0 0 8px ${greenLightColor}33` },
-                    '&.Mui-focused': { transform: 'translateY(-2px)', boxShadow: muiTheme.custom?.shadow?.listItem },
+                    transition: "all 0.3s ease",
+                    "& fieldset": { borderColor: muiTheme.palette.border.main },
+                    "&:hover fieldset": { borderColor: greenLightColor },
+                    "&:hover": {
+                      transform: "translateY(-2px)",
+                      boxShadow: muiTheme.custom?.shadow?.listItem,
+                    },
+                    "&.Mui-focused fieldset": {
+                      borderColor: greenLightColor,
+                      boxShadow: `0 0 8px ${greenLightColor}33`,
+                    },
+                    "&.Mui-focused": {
+                      transform: "translateY(-2px)",
+                      boxShadow: muiTheme.custom?.shadow?.listItem,
+                    },
                   },
-                  '& .MuiInputLabel-root': { fontFamily: "'Poppins', sans-serif", color: muiTheme.palette.text.secondary },
-                  '& .MuiInputBase-input': { fontFamily: "'Poppins', sans-serif", color: muiTheme.palette.text.primary },
+                  "& .MuiInputLabel-root": {
+                    fontFamily: "'Poppins', sans-serif",
+                    color: muiTheme.palette.text.secondary,
+                  },
+                  "& .MuiInputBase-input": {
+                    fontFamily: "'Poppins', sans-serif",
+                    color: muiTheme.palette.text.primary,
+                  },
                 }}
               />
               <TextField
@@ -304,14 +442,20 @@ const ProfileSettings = () => {
                 variant="outlined"
                 disabled
                 sx={{
-                  '& .MuiOutlinedInput-root': {
-                    borderRadius: '8px',
+                  "& .MuiOutlinedInput-root": {
+                    borderRadius: "8px",
                     background: muiTheme.palette.background.listItem,
-                    transition: 'all 0.3s ease',
-                    '& fieldset': { borderColor: muiTheme.palette.border.main },
+                    transition: "all 0.3s ease",
+                    "& fieldset": { borderColor: muiTheme.palette.border.main },
                   },
-                  '& .MuiInputLabel-root': { fontFamily: "'Poppins', sans-serif", color: muiTheme.palette.text.secondary },
-                  '& .MuiInputBase-input': { fontFamily: "'Poppins', sans-serif", color: muiTheme.palette.text.primary },
+                  "& .MuiInputLabel-root": {
+                    fontFamily: "'Poppins', sans-serif",
+                    color: muiTheme.palette.text.secondary,
+                  },
+                  "& .MuiInputBase-input": {
+                    fontFamily: "'Poppins', sans-serif",
+                    color: muiTheme.palette.text.primary,
+                  },
                 }}
               />
               <Box sx={{ mt: 2 }}>
@@ -321,16 +465,16 @@ const ProfileSettings = () => {
                   onClick={handleSave}
                   disabled={loading}
                   sx={{
-                    transition: 'all 0.3s ease',
-                    background: 'linear-gradient(90deg, #4285F4, #34A853)',
-                    color: '#ffffff',
-                    '&:hover': {
-                      transform: 'scale(1.05)',
-                      background: 'linear-gradient(90deg, #34A853, #4285F4)',
+                    transition: "all 0.3s ease",
+                    background: "linear-gradient(90deg, #4285F4, #34A853)",
+                    color: "#ffffff",
+                    "&:hover": {
+                      transform: "scale(1.05)",
+                      background: "linear-gradient(90deg, #34A853, #4285F4)",
                       boxShadow: muiTheme.custom.shadows.buttonHover,
                     },
-                    '&:disabled': {
-                      background: 'linear-gradient(90deg, #4285F4, #34A853)',
+                    "&:disabled": {
+                      background: "linear-gradient(90deg, #4285F4, #34A853)",
                       opacity: 0.6,
                     },
                   }}
@@ -343,11 +487,11 @@ const ProfileSettings = () => {
                   disabled={loading}
                   sx={{
                     ml: 2,
-                    transition: 'all 0.3s ease',
+                    transition: "all 0.3s ease",
                     color: muiTheme.palette.text.primary,
                     borderColor: muiTheme.palette.border.main,
-                    '&:hover': {
-                      transform: 'scale(1.05)',
+                    "&:hover": {
+                      transform: "scale(1.05)",
                       borderColor: greenLightColor,
                       backgroundColor: hoverBackground,
                       color: greenLightColor,
@@ -359,26 +503,47 @@ const ProfileSettings = () => {
               </Box>
             </Box>
           ) : (
-            <Box sx={{ width: '100%' }}>
-              <Typography variant="body1" sx={{ mb: 1, fontFamily: "'Poppins', sans-serif", color: muiTheme.palette.text.primary }}>
-                First Name: {authState.firstName || 'Not Set'}
+            <Box sx={{ width: "100%" }}>
+              <Typography
+                variant="body1"
+                sx={{
+                  mb: 1,
+                  fontFamily: "'Poppins', sans-serif",
+                  color: muiTheme.palette.text.primary,
+                }}
+              >
+                First Name: {authState.firstName || "Not Set"}
               </Typography>
-              <Typography variant="body1" sx={{ mb: 1, fontFamily: "'Poppins', sans-serif", color: muiTheme.palette.text.primary }}>
-                Last Name: {authState.lastName || 'Not Set'}
+              <Typography
+                variant="body1"
+                sx={{
+                  mb: 1,
+                  fontFamily: "'Poppins', sans-serif",
+                  color: muiTheme.palette.text.primary,
+                }}
+              >
+                Last Name: {authState.lastName || "Not Set"}
               </Typography>
-              <Typography variant="body1" sx={{ mb: 1, fontFamily: "'Poppins', sans-serif", color: muiTheme.palette.text.primary }}>
-                Email: {authState.email || 'Not Set'}
+              <Typography
+                variant="body1"
+                sx={{
+                  mb: 1,
+                  fontFamily: "'Poppins', sans-serif",
+                  color: muiTheme.palette.text.primary,
+                }}
+              >
+                Email: {authState.email || "Not Set"}
               </Typography>
               <Button
                 variant="outlined"
                 onClick={handleEditToggle}
                 sx={{
                   mt: 2,
-                  transition: 'all 0.3s ease',
+                  transition: "all 0.3s ease",
                   color: muiTheme.palette.text.primary,
                   borderColor: muiTheme.palette.border.main,
-                  '&:hover': {
-                    transform: 'scale(1.05)',
+                  "&:hover": {
+                    transform: "scale(1.05)",
                     borderColor: greenLightColor,
                     backgroundColor: hoverBackground,
                     color: greenLightColor,
@@ -393,12 +558,23 @@ const ProfileSettings = () => {
       </Box>
 
       <Dialog open={modalOpen} onClose={() => setModalOpen(false)}>
-        <DialogTitle sx={{ fontFamily: "'Poppins', sans-serif", color: muiTheme.palette.primary.main }}>
-          Confirm {modalAction === 'save' ? 'Save' : 'Cancel'}
+        <DialogTitle
+          sx={{
+            fontFamily: "'Poppins', sans-serif",
+            color: muiTheme.palette.primary.main,
+          }}
+        >
+          Confirm {modalAction === "save" ? "Save" : "Cancel"}
         </DialogTitle>
         <DialogContent>
-          <Typography sx={{ fontFamily: "'Poppins', sans-serif", color: muiTheme.palette.text.primary }}>
-            Are you sure you want to {modalAction === 'save' ? 'save changes' : 'discard changes'}?
+          <Typography
+            sx={{
+              fontFamily: "'Poppins', sans-serif",
+              color: muiTheme.palette.text.primary,
+            }}
+          >
+            Are you sure you want to{" "}
+            {modalAction === "save" ? "save changes" : "discard changes"}?
           </Typography>
         </DialogContent>
         <DialogActions>
@@ -407,9 +583,9 @@ const ProfileSettings = () => {
             sx={{
               fontFamily: "'Poppins', sans-serif",
               color: muiTheme.palette.text.primary,
-              transition: 'all 0.3s ease',
-              '&:hover': {
-                transform: 'scale(1.05)',
+              transition: "all 0.3s ease",
+              "&:hover": {
+                transform: "scale(1.05)",
                 backgroundColor: hoverBackground,
                 color: greenLightColor,
               },
@@ -422,9 +598,9 @@ const ProfileSettings = () => {
             sx={{
               fontFamily: "'Poppins', sans-serif",
               color: muiTheme.palette.primary.main,
-              transition: 'all 0.3s ease',
-              '&:hover': {
-                transform: 'scale(1.05)',
+              transition: "all 0.3s ease",
+              "&:hover": {
+                transform: "scale(1.05)",
                 backgroundColor: hoverBackground,
                 color: greenLightColor,
               },
@@ -440,16 +616,16 @@ const ProfileSettings = () => {
         onClose={() => setSuccess(null)}
         severity="success"
         message={success}
-        sx={{ fontFamily: "'Poppins', sans-serif", width: '100%' }}
+        sx={{ fontFamily: "'Poppins', sans-serif", width: "100%" }}
       />
       <CustomSnackbar
         open={!!error}
         onClose={() => setError(null)}
         severity="error"
         message={error}
-        sx={{ fontFamily: "'Poppins', sans-serif", width: '100%' }}
+        sx={{ fontFamily: "'Poppins', sans-serif", width: "100%" }}
       />
-    </Layout>
+    </Box>
   );
 };
 

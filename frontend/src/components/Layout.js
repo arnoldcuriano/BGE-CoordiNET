@@ -1,9 +1,9 @@
-import React, { useState, useEffect } from 'react';
-import { Box, CircularProgress } from '@mui/material';
-import Navbar from './Navbar';
-import Sidebar from './Sidebar';
-import { useAuth } from '../context/AuthContext';
-import { useTheme } from '../context/ThemeContext';
+import React, { useState, useEffect } from "react";
+import { Box, CircularProgress } from "@mui/material";
+import Navbar from "./Navbar";
+import Sidebar from "./Sidebar";
+import { useAuth } from "../context/AuthContext";
+import { useTheme } from "../context/ThemeContext";
 
 const Layout = ({ children }) => {
   const { authState } = useAuth();
@@ -12,11 +12,13 @@ const Layout = ({ children }) => {
   const [open, setOpen] = useState(false);
 
   // Extract transition values with fallbacks
-  const transitionDuration = muiTheme.transitions?.duration?.leavingScreen ?? 300;
-  const transitionEasing = muiTheme.transitions?.easing?.easeInOut ?? 'ease-in-out';
+  const transitionDuration =
+    muiTheme.transitions?.duration?.leavingScreen ?? 300;
+  const transitionEasing =
+    muiTheme.transitions?.easing?.easeInOut ?? "ease-in-out";
 
   // Debug logging to inspect muiTheme.transitions
-  console.log('Layout: muiTheme.transitions:', muiTheme.transitions);
+  console.log("Layout: muiTheme.transitions:", muiTheme.transitions);
 
   const user = authState.isAuthenticated
     ? {
@@ -34,8 +36,8 @@ const Layout = ({ children }) => {
     };
 
     handleResize();
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
   }, []);
 
   const handleDrawerToggle = () => {
@@ -51,7 +53,7 @@ const Layout = ({ children }) => {
   };
 
   return (
-    <Box key={isDarkMode ? 'dark' : 'light'} sx={{ display: 'flex' }}>
+    <Box key={isDarkMode ? "dark" : "light"} sx={{ display: "flex" }}>
       <Navbar
         handleDrawerToggle={handleDrawerToggle}
         user={user}
@@ -71,19 +73,29 @@ const Layout = ({ children }) => {
         component="main"
         sx={{
           flexGrow: 1,
-          pt: '64px',
+          pt: "64px",
           width: {
-            xs: '100%',
+            xs: "100%",
             sm: `calc(100% - ${open ? 260 : 70}px)`,
           },
           background: muiTheme.custom.gradients.backgroundDefault,
-          minHeight: '100vh',
+          minHeight: "100vh",
           transition: `width ${transitionDuration}ms ${transitionEasing}`,
         }}
       >
         {authState.loading ? (
-          <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%' }}>
-            <CircularProgress size={40} sx={{ color: muiTheme.palette.primary.main }} />
+          <Box
+            sx={{
+              display: "flex",
+              justifyContent: "center",
+              alignItems: "center",
+              height: "100%",
+            }}
+          >
+            <CircularProgress
+              size={40}
+              sx={{ color: muiTheme.palette.primary.main }}
+            />
           </Box>
         ) : (
           children

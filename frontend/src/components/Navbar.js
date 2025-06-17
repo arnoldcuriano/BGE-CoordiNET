@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   AppBar,
   Toolbar,
@@ -12,13 +12,19 @@ import {
   Tooltip,
   TextField,
   Badge,
+  List,
+  ListItem,
+  ListItemText,
+  ListItemSecondaryAction,
+  Button,
 } from '@mui/material';
 import MenuIcon from '@mui/icons-material/Menu';
 import CloseIcon from '@mui/icons-material/Close';
 import { Link, useNavigate } from 'react-router-dom';
 import { LightMode, DarkMode, Notifications, Search, Apps, Palette } from '@mui/icons-material';
 import { useAuth } from '../context/AuthContext';
-import { useTheme } from '../context/ThemeContext'; 
+import { useTheme } from '../context/ThemeContext';
+import axios from 'axios';
 
 const Navbar = ({ handleDrawerToggle, user, open, handleDrawerOpen, handleDrawerClose }) => {
   const { isDarkMode, toggleTheme, muiTheme } = useTheme();
@@ -27,6 +33,7 @@ const Navbar = ({ handleDrawerToggle, user, open, handleDrawerOpen, handleDrawer
   const [appAnchorEl, setAppAnchorEl] = useState(null);
   const [colorAnchorEl, setColorAnchorEl] = useState(null);
   const [searchOpen, setSearchOpen] = useState(false);
+  const [notifications, setNotifications] = useState([]);
   const menuOpen = Boolean(anchorEl);
   const notifOpen = Boolean(notifAnchorEl);
   const appOpen = Boolean(appAnchorEl);
@@ -39,8 +46,45 @@ const Navbar = ({ handleDrawerToggle, user, open, handleDrawerOpen, handleDrawer
 
   // Determine the background gradient based on mode
   const backgroundGradient = isDarkMode
-    ? muiTheme.custom.gradients.backgroundDefault // Keep dark mode gradient
-    : 'linear-gradient(90deg, #e3ffe7 0%, #d9e7ff 100%)'; // Light mode gradient
+    ? muiTheme.custom.gradients.backgroundDefault
+    : 'linear-gradient(90deg, #e3ffe7 0%, #d9e7ff 100%)';
+
+  // Fetch notifications on component mount
+  useEffect(() => {
+    const fetchNotifications = async () => {
+      try {
+        // Fetch inventory notifications
+        const inventoryResponse = await axios.get('/api/inventory/notifications');
+        // Fetch partner notifications (assuming endpoint exists)
+        const partnerResponse = await axios.get('/api/partners/notifications');
+        // Combine notifications
+        const combinedNotifications = [
+          ...inventoryResponse.data.map(n => ({ ...n, type: 'inventory' })),
+          ...partnerResponse.data.map(n => ({ ...n, type: 'partner' })),
+        ];
+        // Sort by createdAt (newest first)
+        combinedNotifications.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+        setNotifications(combinedNotifications);
+      } catch (err) {
+        console.error('Error fetching notifications:', err);
+      }
+    };
+
+    fetchNotifications();
+  }, []);
+
+  const handleMarkNotificationRead = async (notificationId, type) => {
+    try {
+      if (type === 'inventory') {
+        await axios.post(`/api/inventory/notifications/${notificationId}/read`);
+      } else if (type === 'partner') {
+        await axios.post(`/api/partners/notifications/${notificationId}/read`);
+      }
+      setNotifications(notifications.map(n => n._id === notificationId ? { ...n, read: true } : n));
+    } catch (err) {
+      console.error('Error marking notification as read:', err);
+    }
+  };
 
   const handleMenu = (event) => {
     setAnchorEl(event.currentTarget);
@@ -99,11 +143,6 @@ const Navbar = ({ handleDrawerToggle, user, open, handleDrawerOpen, handleDrawer
     }
   };
 
-  const notifications = [
-    { id: 1, message: 'New member added to the team' },
-    { id: 2, message: 'Access Request' },
-  ];
-
   const apps = [
     { name: 'CoordiNET Dashboard', path: '/dashboard' },
     { name: 'CoordiNET Analytics', path: '/analytics' },
@@ -115,7 +154,6 @@ const Navbar = ({ handleDrawerToggle, user, open, handleDrawerOpen, handleDrawer
     { name: 'Purple', value: '#9C27B0' },
   ];
 
-  // Fallback for transition duration to prevent errors
   const transitionDuration = muiTheme.transitions?.duration?.standard ?? 300;
 
   return (
@@ -123,7 +161,7 @@ const Navbar = ({ handleDrawerToggle, user, open, handleDrawerOpen, handleDrawer
       position="fixed"
       sx={{
         zIndex: (theme) => theme.zIndex.drawer + 1,
-        background: backgroundGradient, // Use dynamic gradient
+        background: backgroundGradient,
         backdropFilter: 'blur(10px)',
         boxShadow: muiTheme.custom.shadows.paper,
         borderBottom: `1px solid ${muiTheme.palette.border.main}`,
@@ -136,7 +174,7 @@ const Navbar = ({ handleDrawerToggle, user, open, handleDrawerOpen, handleDrawer
           minHeight: '64px !important',
           paddingLeft: { xs: 0, sm: 0 },
           paddingRight: { xs: '16px', sm: '24px' },
-          background: backgroundGradient, // Ensure Toolbar matches AppBar
+          background: backgroundGradient,
         }}
       >
         <IconButton
@@ -231,7 +269,7 @@ const Navbar = ({ handleDrawerToggle, user, open, handleDrawerOpen, handleDrawer
               transition: `all ${transitionDuration}ms ${muiTheme.custom.transitions?.easing?.easeInOut ?? 'ease-in-out'}`,
             }}
           >
-            <Badge badgeContent={notifications.length} color="error">
+            <Badge badgeContent={notifications.filter(n => !n.read).length} color="error">
               <Notifications />
             </Badge>
           </IconButton>
@@ -246,25 +284,45 @@ const Navbar = ({ handleDrawerToggle, user, open, handleDrawerOpen, handleDrawer
                 border: muiTheme.palette.border.glass,
                 maxHeight: '300px',
                 width: '250px',
+                overflowY: 'auto',
               },
             }}
           >
             {notifications.length > 0 ? (
               notifications.map((notif) => (
-                <MenuItem
-                  key={notif.id}
-                  onClick={handleNotifClose}
+                <ListItem
+                  key={notif._id}
                   sx={{
                     fontFamily: muiTheme.typography.fontFamily,
                     fontSize: '0.85rem',
                     color: iconTextColor,
+                    backgroundColor: notif.read ? 'transparent' : muiTheme.palette.action.hover,
                     '&:hover': {
                       backgroundColor: muiTheme.custom.gradients.listItemHover,
                     },
                   }}
                 >
-                  {notif.message}
-                </MenuItem>
+                  <ListItemText
+                    primary={notif.message}
+                    secondary={new Date(notif.createdAt).toLocaleString()}
+                    primaryTypographyProps={{
+                      fontSize: '0.85rem',
+                    }}
+                    secondaryTypographyProps={{
+                      fontSize: '0.75rem',
+                    }}
+                  />
+                  <ListItemSecondaryAction>
+                    {!notif.read && (
+                      <Button
+                        onClick={() => handleMarkNotificationRead(notif._id, notif.type)}
+                        sx={{ color: muiTheme.palette.primary.main, fontSize: '0.75rem' }}
+                      >
+                        Mark as Read
+                      </Button>
+                    )}
+                  </ListItemSecondaryAction>
+                </ListItem>
               ))
             ) : (
               <MenuItem

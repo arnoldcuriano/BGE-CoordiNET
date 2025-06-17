@@ -29,6 +29,7 @@ const userSchema = new mongoose.Schema({
       accountSettings: true,
     },
   },
+  assignedItems: [{ type: mongoose.Schema.Types.ObjectId, ref: 'InventoryAssignment' }], // Added for inventory assignments
   createdAt: { type: Date, default: Date.now },
 });
 
