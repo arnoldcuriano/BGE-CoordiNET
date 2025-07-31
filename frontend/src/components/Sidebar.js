@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useCallback } from "react";
 import {
   Drawer,
   List,
@@ -30,7 +30,6 @@ import DevicesOtherIcon from "@mui/icons-material/DevicesOther";
 import DescriptionIcon from "@mui/icons-material/Description";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import ExpandLessIcon from "@mui/icons-material/ExpandLess";
-import ArticleIcon from "@mui/icons-material/Article";
 import { ArticleOutlined } from "@mui/icons-material";
 import { useAuth } from "../context/AuthContext";
 import { useTheme } from "../context/ThemeContext";
@@ -67,8 +66,6 @@ const Sidebar = ({
   const transitionEasing =
     muiTheme.transitions?.easing?.easeInOut ?? "ease-in-out";
 
-  console.log("Sidebar: muiTheme.transitions:", muiTheme.transitions);
-
   const accessPermissions = useMemo(() => {
     const perms = authState.accessPermissions || {};
     if (perms instanceof Map) {
@@ -100,127 +97,118 @@ const Sidebar = ({
   const drawerWidth = 260;
   const miniDrawerWidth = 70;
 
-  const handleMenu = (event) => {
+  const handleMenu = useCallback((event) => {
     setAnchorEl(event.currentTarget);
-  };
+  }, []);
 
-  const handleClose = () => {
+  const handleClose = useCallback(() => {
     setAnchorEl(null);
-  };
+  }, []);
 
-  const handleLogoutClick = async () => {
+  const handleLogoutClick = useCallback(async () => {
     handleClose();
     const success = await handleLogout(navigate);
     if (success) {
       navigate("/login");
     }
-  };
+  }, [handleClose, handleLogout, navigate]);
 
-  const handleSubmenuToggle = (menuText) => {
+  const handleSubmenuToggle = useCallback((menuText) => {
     setOpenSubmenu((prev) => ({
       ...prev,
       [menuText]: !prev[menuText],
     }));
-  };
+  }, []);
 
-  const menuItems = [
-    {
-      text: "Dashboard",
-      icon: <DashboardIcon />,
-      path: "/dashboard",
-      permissionKey: "dashboard",
-    },
-    {
-      text: "Partners",
-      icon: <AddBusinessIcon />,
-      path: "/partners",
-      permissionKey: "partners",
-    },
-    {
-      text: "HR Management",
-      icon: <GroupIcon />,
-      path: "/hr-management",
-      permissionKey: "hrManagement",
-      subItems: [
-        {
-          text: "Members",
-          path: "/hr-management/members",
-          permissionKey: "members",
-        },
-      ],
-    },
-    {
-      text: "Finance Management",
-      icon: <AddCardIcon />,
-      path: "/finance-management",
-      permissionKey: "financeManagement",
-    },
-    {
-      text: "Projects",
-      icon: <CreateNewFolderIcon />,
-      path: "/projects",
-      permissionKey: "projects",
-      subItems: [
-        {
-          text: "Active Projects",
-          path: "/projects/active",
-          permissionKey: "projects",
-        },
-        {
-          text: "Archived Projects",
-          path: "/projects/archived",
-          permissionKey: "projects",
-        },
-      ],
-    },
-    {
-      text: "IT Inventory",
-      icon: <DevicesOtherIcon />,
-      path: "/it-inventory",
-      permissionKey: "itInventory",
-    },
-    {
-      text: "Quick Tools",
-      icon: <AutoFixHighIcon />,
-      path: "/quick-tools",
-      permissionKey: "quickTools",
-    },
-    {
-      text: "Super Admin Dashboard",
-      icon: <AdminPanelSettingsIcon />,
-      path: "/superadmin-dashboard",
-      permissionKey: "superadminDashboard",
-      subItems: [
-        {
-          text: "Manage Patch Notes",
-          icon: <ArticleOutlined />,
-          path: "/superadmin-dashboard/patch-notes",
-          permissionKey: "superadminDashboard",
-        },
-      ],
-    },
-  ];
+  const menuItems = useMemo(
+    () => [
+      {
+        text: "Dashboard",
+        icon: <DashboardIcon />,
+        path: "/dashboard",
+        permissionKey: "dashboard",
+      },
+      {
+        text: "Partners",
+        icon: <AddBusinessIcon />,
+        path: "/partners",
+        permissionKey: "partners",
+      },
+      {
+        text: "HR Management",
+        icon: <GroupIcon />,
+        path: "/hr-management",
+        permissionKey: "hrManagement",
+        // Removed subItems for Members
+      },
+      {
+        text: "Projects",
+        icon: <CreateNewFolderIcon />,
+        path: "/projects",
+        permissionKey: "projects",
+        subItems: [
+          {
+            text: "Active Projects",
+            path: "/projects/active",
+            permissionKey: "projects",
+          },
+          {
+            text: "Archived Projects",
+            path: "/projects/archived",
+            permissionKey: "projects",
+          },
+        ],
+      },
+      {
+        text: "IT Inventory",
+        icon: <DevicesOtherIcon />,
+        path: "/it-inventory",
+        permissionKey: "itInventory",
+      },
+      {
+        text: "Quick Tools",
+        icon: <AutoFixHighIcon />,
+        path: "/quick-tools",
+        permissionKey: "quickTools",
+      },
+      {
+        text: "Super Admin Dashboard",
+        icon: <AdminPanelSettingsIcon />,
+        path: "/superadmin-dashboard",
+        permissionKey: "superadminDashboard",
+        subItems: [
+          {
+            text: "Manage Patch Notes",
+            icon: <ArticleOutlined />,
+            path: "/superadmin-dashboard/patch-notes",
+            permissionKey: "superadminDashboard",
+          },
+        ],
+      },
+    ],
+    []
+  );
 
-  const knowledgeBaseItems = [
-    {
-      text: "Help & Support",
-      icon: <HelpIcon />,
-      path: "/help",
-      permissionKey: "help",
-    },
-    {
-      text: "Patch Notes",
-      icon: <DescriptionIcon />,
-      path: "/patch-notes",
-      permissionKey: "patchNotes",
-    },
-  ];
+  const knowledgeBaseItems = useMemo(
+    () => [
+      {
+        text: "Help & Support",
+        icon: <HelpIcon />,
+        path: "/help",
+        permissionKey: "help",
+      },
+      {
+        text: "Patch Notes",
+        icon: <DescriptionIcon />,
+        path: "/patch-notes",
+        permissionKey: "patchNotes",
+      },
+    ],
+    []
+  );
 
   const drawerContent = (
-    <Box
-      key={isDarkMode ? "dark" : "light"}
-      sx={{ display: "flex", flexDirection: "column", height: "100%" }}
-    >
+    <Box sx={{ display: "flex", flexDirection: "column", height: "100%" }}>
       <Box
         sx={{
           height: "64px",
@@ -288,15 +276,12 @@ const Sidebar = ({
                 ? item.subItems.some(
                     (subItem) =>
                       isSuperAdmin ||
-                      accessPermissions[subItem.permissionKey] === true
+                      (subItem.permissionKey &&
+                        accessPermissions[subItem.permissionKey] === true)
                   )
                 : false;
               console.log(
-                `Menu item ${item.text} permission:`,
-                hasPermission,
-                `Has Submenu Permission:`,
-                hasSubmenuPermission,
-                `Access Permissions:`,
+                `Menu item ${item.text} permission: ${hasPermission}, Has Submenu Permission: ${hasSubmenuPermission}, Access Permissions:`,
                 accessPermissions
               );
 
@@ -309,14 +294,15 @@ const Sidebar = ({
                 item.subItems.some(
                   (subItem) =>
                     isSuperAdmin ||
-                    accessPermissions[subItem.permissionKey] === true
+                    (subItem.permissionKey &&
+                      accessPermissions[subItem.permissionKey] === true)
                 );
 
               return (
                 <React.Fragment key={item.text}>
                   <ListItem disablePadding>
                     <ListItemButton
-                      component={Link} // Restore navigation for parent item
+                      component={Link}
                       to={item.path}
                       onClick={(event) => {
                         event.stopPropagation();
@@ -395,11 +381,11 @@ const Sidebar = ({
                         {item.subItems.map((subItem) => {
                           const subHasPermission =
                             isSuperAdmin ||
-                            accessPermissions[subItem.permissionKey] === true;
+                            (subItem.permissionKey &&
+                              accessPermissions[subItem.permissionKey] ===
+                                true);
                           console.log(
-                            `Submenu item ${subItem.text} permission:`,
-                            subHasPermission,
-                            `Access Permissions:`,
+                            `Submenu item ${subItem.text} permission: ${subHasPermission}, Access Permissions:`,
                             accessPermissions
                           );
 
@@ -414,9 +400,6 @@ const Sidebar = ({
                                 to={subItem.path}
                                 onClick={(event) => {
                                   event.stopPropagation();
-                                  console.log(
-                                    `Sidebar: Navigating to submenu item ${subItem.text} at path ${subItem.path}`
-                                  );
                                   navigate(subItem.path);
                                 }}
                                 sx={{
@@ -466,7 +449,6 @@ const Sidebar = ({
                 </React.Fragment>
               );
             })}
-
             <Divider
               sx={{ borderColor: muiTheme.palette.border.main, my: 1 }}
             />
@@ -489,9 +471,7 @@ const Sidebar = ({
                   isSuperAdmin ||
                   accessPermissions[item.permissionKey] === true;
                 console.log(
-                  `Knowledge Base item ${item.text} permission:`,
-                  hasPermission,
-                  `Access Permissions:`,
+                  `Knowledge Base item ${item.text} permission: ${hasPermission}, Access Permissions:`,
                   accessPermissions
                 );
                 if (!hasPermission) return null;
@@ -502,9 +482,6 @@ const Sidebar = ({
                       component={Link}
                       to={item.path}
                       onClick={() => {
-                        console.log(
-                          `Sidebar: Navigating to knowledge base item ${item.text} at path ${item.path}`
-                        );
                         navigate(item.path);
                       }}
                       sx={{
@@ -575,11 +552,7 @@ const Sidebar = ({
             <Avatar
               alt={`${user.firstName || ""} ${user.lastName || ""}`}
               src={user.profilePicture}
-              sx={{
-                width: 36,
-                height: 36,
-                mr: 1,
-              }}
+              sx={{ width: 36, height: 36, mr: 1 }}
             />
             <Box
               sx={{
@@ -694,9 +667,7 @@ const Sidebar = ({
         variant="temporary"
         open={mobileOpen}
         onClose={handleDrawerToggle}
-        ModalProps={{
-          keepMounted: true,
-        }}
+        ModalProps={{ keepMounted: true }}
         sx={{
           display: { xs: "block", sm: "none" },
           "& .MuiDrawer-paper": {

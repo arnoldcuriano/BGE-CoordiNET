@@ -8,8 +8,7 @@ const NoAccess = () => {
   const navigate = useNavigate();
   const { state } = useLocation();
   const { handleLogout } = useAuth();
-  const { isDarkMode } = useTheme(); // Removed unused muiTheme
-
+  const { isDarkMode } = useTheme();
   return (
     <Box
       sx={{

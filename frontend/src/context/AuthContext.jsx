@@ -1,11 +1,12 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
+import { toast } from 'react-toastify';
 
 const AuthContext = createContext();
 
 export const AuthProvider = ({ children }) => {
   const [authState, setAuthState] = useState({
-    loading: true,
+    loading: true, 
     isAuthenticated: false,
     userRole: null,
     role: null,
@@ -15,81 +16,91 @@ export const AuthProvider = ({ children }) => {
     profilePicture: null,
     isApproved: false,
     accessPermissions: {},
+    employeeId: null,
+    department: null,
+    status: null,
+    position: null,
+    contactNumber: null,
+    birthdate: null,
+    gender: null,
+    civilStatus: null,
+    governmentIds: { sss: '', philHealth: '', tin: '', pagIbig: '' },
+    hireDate: null,
   });
   const [hasLoggedOut, setHasLoggedOut] = useState(false);
-  const [isFetching, setIsFetching] = useState(false);
+  const [hasFetched, setHasFetched] = useState(false);
 
   const fetchUser = useCallback(async () => {
-    if (isFetching || hasLoggedOut) {
-      console.log('AuthContext: Skipping fetchUser due to ongoing fetch or logout');
+    if (hasFetched || hasLoggedOut) {
+      console.log('AuthContext: Skipping fetchUser due to prior fetch or logout');
+      setAuthState((prev) => ({ ...prev, loading: false }));
       return;
     }
 
-    setIsFetching(true);
-    let attempts = 0;
-    const maxAttempts = 3;
-    const initialRetryDelay = 500; // Reduced initial delay for faster retries
-
-    while (attempts < maxAttempts) {
-      try {
-        console.log('AuthContext: Fetching user data, attempt', attempts + 1);
-        setAuthState((prev) => ({ ...prev, loading: true }));
-        const response = await axios.get('/auth/user', { withCredentials: true, timeout: 5000 });
-        if (response.data && response.data.role) {
-          console.log('AuthContext: User data fetched successfully:', response.data);
-          setAuthState({
-            loading: false,
-            isAuthenticated: true,
-            userRole: response.data.role,
-            role: response.data.role,
-            firstName: response.data.firstName,
-            lastName: response.data.lastName,
-            email: response.data.email,
-            profilePicture: response.data.profilePicture,
-            isApproved: response.data.isApproved || false,
-            accessPermissions: response.data.accessPermissions || {},
-          });
-          break;
-        } else {
-          throw new Error('No user data');
-        }
-      } catch (error) {
-        console.error('AuthContext: Auth check failed at', new Date().toISOString(), error.message);
-        attempts++;
-        if (attempts === maxAttempts) {
-          console.log('AuthContext: Max attempts reached, setting authState to unauthenticated');
-          setAuthState({
-            loading: false,
-            isAuthenticated: false,
-            userRole: null,
-            role: null,
-            firstName: null,
-            lastName: null,
-            email: null,
-            profilePicture: null,
-            isApproved: false,
-            accessPermissions: {},
-          });
-        } else {
-          // Exponential backoff with a reduced initial delay
-          const delay = initialRetryDelay * Math.pow(2, attempts);
-          console.log(`AuthContext: Retrying after ${delay}ms...`);
-          await new Promise((resolve) => setTimeout(resolve, delay));
-        }
-      } finally {
-        if (attempts >= maxAttempts) {
-          setIsFetching(false);
-        }
+    try {
+      console.log('AuthContext: Fetching user data');
+      const response = await axios.get('/auth/user', { withCredentials: true, timeout: 5000 });
+      if (response.data && response.data.role) {
+        console.log('AuthContext: User data fetched successfully:', response.data);
+        setAuthState({
+          loading: false,
+          isAuthenticated: true,
+          userRole: response.data.role,
+          role: response.data.role,
+          firstName: response.data.firstName,
+          lastName: response.data.lastName,
+          email: response.data.email,
+          profilePicture: response.data.profilePicture,
+          isApproved: response.data.isApproved || false,
+          accessPermissions: response.data.accessPermissions || {},
+          employeeId: response.data.employeeId || null,
+          department: response.data.department || null,
+          status: response.data.status || null,
+          position: response.data.position || null,
+          contactNumber: response.data.contactNumber || null,
+          birthdate: response.data.birthdate || null,
+          gender: response.data.gender || null,
+          civilStatus: response.data.civilStatus || null,
+          governmentIds: response.data.governmentIds || { sss: '', philHealth: '', tin: '', pagIbig: '' },
+          hireDate: response.data.hireDate || null,
+        });
+      } else {
+        throw new Error('No user data');
       }
+    } catch (error) {
+      console.error('AuthContext: Auth check failed at', new Date().toISOString(), error.message, error.response?.data);
+      setAuthState({
+        loading: false,
+        isAuthenticated: false,
+        userRole: null,
+        role: null,
+        firstName: null,
+        lastName: null,
+        email: null,
+        profilePicture: null,
+        isApproved: false,
+        accessPermissions: {},
+        employeeId: null,
+        department: null,
+        status: null,
+        position: null,
+        contactNumber: null,
+        birthdate: null,
+        gender: null,
+        civilStatus: null,
+        governmentIds: { sss: '', philHealth: '', tin: '', pagIbig: '' },
+        hireDate: null,
+      });
+    } finally {
+      setHasFetched(true);
     }
-    setIsFetching(false);
-  }, [hasLoggedOut]);
+  }, [hasLoggedOut, hasFetched]);
 
   useEffect(() => {
     let isMounted = true;
     const checkAuth = async () => {
-      if (!isMounted || hasLoggedOut || isFetching) {
-        console.log('AuthContext: Skipping fetchUser due to unmount, logout, or ongoing fetch');
+      if (!isMounted || hasFetched || hasLoggedOut) {
+        console.log('AuthContext: Skipping fetchUser due to unmount, prior fetch, or logout');
         setAuthState((prev) => ({ ...prev, loading: false }));
         return;
       }
@@ -101,16 +112,18 @@ export const AuthProvider = ({ children }) => {
     return () => {
       isMounted = false;
     };
-  }, [fetchUser, hasLoggedOut]);
+  }, [fetchUser, hasFetched, hasLoggedOut]);
 
   const login = async (email, password, rememberMe) => {
     try {
+      console.log('AuthContext: Attempting login with email:', email);
       const response = await axios.post('/auth/login', { email, password, rememberMe }, { withCredentials: true });
       setHasLoggedOut(false);
+      setHasFetched(false);
       await fetchUser();
       return response.data;
     } catch (error) {
-      console.error('AuthContext: Login failed:', error.message);
+      console.error('AuthContext: Login failed:', error.message, error.response?.data);
       throw error;
     }
   };
@@ -129,13 +142,27 @@ export const AuthProvider = ({ children }) => {
         profilePicture: null,
         isApproved: false,
         accessPermissions: {},
+        employeeId: null,
+        department: null,
+        status: null,
+        position: null,
+        contactNumber: null,
+        birthdate: null,
+        gender: null,
+        civilStatus: null,
+        governmentIds: { sss: '', philHealth: '', tin: '', pagIbig: '' },
+        hireDate: null,
       });
       setHasLoggedOut(true);
+      setHasFetched(false);
+      toast.success('Logged out successfully');
       if (navigate) navigate('/login');
       return true;
     } catch (error) {
-      console.error('AuthContext: Logout failed:', error.message);
+      console.error('AuthContext: Logout failed:', error.message, error.response?.data);
+      toast.error('Logout failed');
       setHasLoggedOut(true);
+      setHasFetched(false);
       if (navigate) navigate('/login');
       return false;
     }

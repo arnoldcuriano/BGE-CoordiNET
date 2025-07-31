@@ -5,7 +5,7 @@ import CssBaseline from "@mui/material/CssBaseline";
 import { ThemeProvider } from "./context/ThemeContext";
 import { AuthProvider } from "./context/AuthContext";
 import ProtectedRoute from "./components/ProtectedRoute";
-import ErrorBoundary from "./components/errorBoundary";
+import ErrorBoundary from "./components/ErrorBoundary";
 import Layout from "./components/Layout";
 import Login from "./pages/Login";
 import Signup from "./pages/Signup";
@@ -13,14 +13,12 @@ import ForgotPassword from "./pages/ForgotPassword";
 import ResetPassword from "./pages/ResetPassword";
 import Dashboard from "./pages/Dashboard";
 import Welcome from "./pages/Welcome";
-import Members from "./pages/Members";
 import Partners from "./pages/Partners";
 import HRManagement from "./pages/HRManagement";
-import Projects from "./pages/Projects";
+import UserDetails from "./pages/userDetails"; // Fixed casing to match file system
 import ITInventory from "./pages/ITInventory";
-import QuickTools from "./pages/QuickTools";
 import SuperAdminDashboard from "./pages/SuperAdminDashboard";
-import ManagePatchNotes from "./pages/ManagePatchNotes"; // Import ManagePatchNotes
+import ManagePatchNotes from "./pages/ManagePatchNotes";
 import ProfileSettings from "./pages/ProfileSettings";
 import AccountSettings from "./pages/AccountSettings";
 import NoAccess from "./pages/NoAccess";
@@ -60,7 +58,6 @@ const App = () => {
       "text.secondary:",
       theme.palette.text.secondary
     );
-    console.log("App.js: muiTheme.transitions:", theme.transitions);
     return theme;
   }, [isDarkMode]);
 
@@ -72,21 +69,16 @@ const App = () => {
     { path: "/welcome", element: <Welcome /> },
     { path: "/dashboard", element: <Dashboard />, pageKey: "dashboard" },
     {
-      path: "/hr-management/members",
-      element: <PlaceholderPage pageName="Members" />,
+      path: "/hr-management",
+      element: <HRManagement />,
+      pageKey: "hrManagement",
+    },
+    {
+      path: "/hr-management/:userId",
+      element: <UserDetails />,
       pageKey: "hrManagement",
     },
     { path: "/partners", element: <Partners />, pageKey: "partners" },
-    {
-      path: "/hr-management",
-      element: <PlaceholderPage pageName="HRManagement" />,
-      pageKey: "hrManagement",
-    },
-    {
-      path: "/finance-management",
-      element: <PlaceholderPage pageName="Finance Management" />,
-      pageKey: "financeManagement",
-    },
     {
       path: "/finance-management/members-list",
       element: <PlaceholderPage pageName="Finance Management" />,
@@ -163,7 +155,6 @@ const App = () => {
   const publicRoutes = routes.filter((route) => route.isPublic);
   const protectedRoutes = routes.filter((route) => !route.isPublic);
 
-  // Log the routes for debugging
   console.log(
     "App.js: Public Routes:",
     publicRoutes.map((r) => r.path)

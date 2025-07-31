@@ -1,4 +1,4 @@
-const mongoose = require('mongoose');
+const mongoose = require("mongoose");
 
 const PartnerSchema = new mongoose.Schema({
   name: {
@@ -11,8 +11,8 @@ const PartnerSchema = new mongoose.Schema({
   },
   status: {
     type: String,
-    enum: ['Hot', 'Warm', 'Cold'],
-    default: 'Cold',
+    enum: ["Hot", "Warm", "Cold"],
+    default: "Cold",
   },
   manualStatus: {
     type: Boolean,
@@ -28,12 +28,12 @@ const PartnerSchema = new mongoose.Schema({
   },
   durationStatus: {
     type: String,
-    enum: ['Upcoming', 'Ongoing', 'Custom'],
-    default: 'Upcoming',
+    enum: ["Upcoming", "Ongoing", "Custom"],
+    default: "Upcoming",
   },
   durationStatusCustom: {
     type: String,
-    default: '',
+    default: "",
   },
   category: {
     type: String,
@@ -80,7 +80,7 @@ const PartnerSchema = new mongoose.Schema({
       action: String,
       userId: {
         type: mongoose.Schema.Types.ObjectId,
-        ref: 'User',
+        ref: "User",
       },
       userName: String,
       details: String,
@@ -90,6 +90,26 @@ const PartnerSchema = new mongoose.Schema({
       },
     },
   ],
+  comments: [
+    {
+      comment: {
+        type: String,
+        required: true,
+      },
+      userId: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "User",
+      },
+      userName: {
+        type: String,
+        required: true,
+      },
+      timestamp: {
+        type: Date,
+        default: Date.now,
+      },
+    },
+  ],
 });
 
-module.exports = mongoose.model('Partner', PartnerSchema);
+module.exports = mongoose.model("Partner", PartnerSchema);

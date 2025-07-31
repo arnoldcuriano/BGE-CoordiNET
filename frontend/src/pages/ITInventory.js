@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { useAuth } from "../context/AuthContext";
 import { useTheme } from "../context/ThemeContext";
 import { useNavigate } from "react-router-dom";
@@ -24,26 +24,30 @@ import {
   DialogTitle,
   DialogContent,
   DialogActions,
-  Divider,
   Avatar,
   Tooltip,
   Toolbar,
   Autocomplete,
   keyframes,
+  TablePagination,
 } from "@mui/material";
 import {
-  Add,
-  Search,
+  Add as AddIcon,
+  Search as SearchIcon,
   AssignmentReturn,
   SwapHoriz,
   Assignment,
-  Upload,
+  Upload as FileUploadIcon,
   Warning,
   CheckCircle,
   Visibility,
+  Delete as DeleteIcon,
+  Edit as EditIcon,
 } from "@mui/icons-material";
 import CustomSnackbar from "../components/CustomSnackbar";
+import { toast } from "react-toastify";
 
+// Animation for page load
 const fadeIn = keyframes`
   from {
     opacity: 0;
@@ -69,6 +73,8 @@ const ITInventory = () => {
     warrantyEndDate: "",
     supportDetails: "",
   });
+  const [editItem, setEditItem] = useState(null);
+  const [viewItem, setViewItem] = useState(null);
   const [assignment, setAssignment] = useState({
     item: null,
     user: null,
@@ -76,6 +82,9 @@ const ITInventory = () => {
   });
   const [bulkUploadFile, setBulkUploadFile] = useState(null);
   const [addModalOpen, setAddModalOpen] = useState(false);
+  const [viewModalOpen, setViewModalOpen] = useState(false);
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [itemToDelete, setItemToDelete] = useState(null);
   const [assignModalOpen, setAssignModalOpen] = useState(false);
   const [bulkUploadModalOpen, setBulkUploadModalOpen] = useState(false);
   const [returnModalOpen, setReturnModalOpen] = useState(false);
@@ -87,27 +96,22 @@ const ITInventory = () => {
   const [filterCategory, setFilterCategory] = useState("");
   const [success, setSuccess] = useState("");
   const [error, setError] = useState("");
+  const [page, setPage] = useState(0);
+  const [rowsPerPage, setRowsPerPage] = useState(5);
 
+  const brandingBlue = "#4285F4";
   const greenLightColor = "#34A853";
   const greenLightHoverBackground = "rgba(52, 168, 83, 0.1)";
   const hoverBackground = isDarkMode
     ? "rgba(255, 255, 255, 0.15)"
     : greenLightHoverBackground;
+  const disabledColor = "#666";
 
-  useEffect(() => {
-    if (!authState.isAuthenticated) {
-      navigate("/login");
-      return;
-    }
-    fetchInventory();
-    fetchUsers();
-  }, [authState, navigate]);
-
-  const fetchInventory = async () => {
+  const fetchInventory = useCallback(async () => {
     try {
       const [itemsResponse, assignmentsResponse] = await Promise.all([
-        axios.get("/api/inventory"),
-        axios.get("/api/inventory/assignments"),
+        axios.get("/api/inventory", { withCredentials: true }),
+        axios.get("/api/inventory/assignments", { withCredentials: true }),
       ]);
       console.log("Fetched assignments:", assignmentsResponse.data);
       setItems(itemsResponse.data);
@@ -119,11 +123,13 @@ const ITInventory = () => {
       );
       console.error("Error fetching inventory:", err);
     }
-  };
+  }, []);
 
-  const fetchUsers = async () => {
+  const fetchUsers = useCallback(async () => {
     try {
-      const response = await axios.get("/api/users");
+      const response = await axios.get("/auth/users", {
+        withCredentials: true,
+      });
       setUsers(response.data);
     } catch (err) {
       setError(
@@ -132,7 +138,25 @@ const ITInventory = () => {
       );
       console.error("Error fetching users:", err);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    if (!authState.isAuthenticated || authState.loading) return;
+    if (!["admin", "superadmin", "it"].includes(authState.userRole)) {
+      toast.error("Access denied.");
+      navigate("/dashboard");
+      return;
+    }
+    fetchInventory();
+    fetchUsers();
+  }, [
+    authState.isAuthenticated,
+    authState.loading,
+    authState.userRole,
+    navigate,
+    fetchInventory,
+    fetchUsers,
+  ]);
 
   const handleAddItem = async () => {
     if (!newItem.name || !newItem.category || !newItem.serialNumber) {
@@ -143,8 +167,15 @@ const ITInventory = () => {
     }
 
     try {
-      await axios.post("/api/inventory", newItem);
-      setSuccess("Item added successfully");
+      if (editItem) {
+        await axios.put(`/api/inventory/${editItem._id}`, newItem, {
+          withCredentials: true,
+        });
+        setSuccess("Item updated successfully");
+      } else {
+        await axios.post("/api/inventory", newItem, { withCredentials: true });
+        setSuccess("Item added successfully");
+      }
       setAddModalOpen(false);
       setNewItem({
         name: "",
@@ -153,13 +184,56 @@ const ITInventory = () => {
         warrantyEndDate: "",
         supportDetails: "",
       });
+      setEditItem(null);
       fetchInventory();
     } catch (err) {
       setError(
         err.response?.data?.message ||
-          "Failed to add item. Please try again later."
+          `Failed to ${
+            editItem ? "update" : "add"
+          } item. Please try again later.`
       );
-      console.error("Error adding item:", err);
+      console.error(`Error ${editItem ? "updating" : "adding"} item:`, err);
+    }
+  };
+
+  const handleEditItem = (item) => {
+    setEditItem(item);
+    setNewItem({
+      name: item.name || "",
+      category: item.category || "",
+      serialNumber: item.serialNumber || "",
+      warrantyEndDate: item.warrantyEndDate
+        ? item.warrantyEndDate.split("T")[0]
+        : "",
+      supportDetails: item.supportDetails || "",
+    });
+    setAddModalOpen(true);
+  };
+
+  const handleViewItem = (item) => {
+    setViewItem(item);
+    setViewModalOpen(true);
+  };
+
+  const handleDeleteItem = async () => {
+    if (!itemToDelete) return;
+    try {
+      await axios.delete(`/api/inventory/${itemToDelete._id}`, {
+        withCredentials: true,
+      });
+      setSuccess("Item deleted successfully");
+      setDeleteModalOpen(false);
+      setItemToDelete(null);
+      fetchInventory();
+    } catch (err) {
+      setError(
+        err.response?.data?.message ||
+          "Failed to delete item. Please try again later."
+      );
+      console.error("Error deleting item:", err);
+      setDeleteModalOpen(false);
+      setItemToDelete(null);
     }
   };
 
@@ -175,6 +249,7 @@ const ITInventory = () => {
 
       await axios.post("/api/inventory/bulk-upload", formData, {
         headers: { "Content-Type": "multipart/form-data" },
+        withCredentials: true,
       });
       setSuccess("Bulk upload successful");
       setBulkUploadModalOpen(false);
@@ -210,6 +285,7 @@ const ITInventory = () => {
         formData,
         {
           headers: { "Content-Type": "multipart/form-data" },
+          withCredentials: true,
         }
       );
       setSuccess("Item assigned successfully");
@@ -228,7 +304,9 @@ const ITInventory = () => {
   const handleReturnItem = async () => {
     try {
       await axios.post(
-        `/api/inventory/${selectedAssignment?.itemId?._id}/return`
+        `/api/inventory/${selectedAssignment?.itemId?._id}/return`,
+        {},
+        { withCredentials: true }
       );
       setSuccess("Item returned successfully");
       setReturnModalOpen(false);
@@ -255,7 +333,8 @@ const ITInventory = () => {
         {
           assignmentId: selectedAssignment._id,
           newUserId: reassignUserId,
-        }
+        },
+        { withCredentials: true }
       );
       setSuccess("Item reassigned successfully");
       setReassignModalOpen(false);
@@ -292,6 +371,18 @@ const ITInventory = () => {
     return matchesSearch && matchesStatus && matchesCategory;
   });
 
+  const paginatedAssignments = filteredAssignments.slice(
+    page * rowsPerPage,
+    page * rowsPerPage + rowsPerPage
+  );
+
+  const handleChangePage = (event, newPage) => setPage(newPage);
+
+  const handleChangeRowsPerPage = (event) => {
+    setRowsPerPage(parseInt(event.target.value, 10));
+    setPage(0);
+  };
+
   return (
     <Box
       sx={{
@@ -301,10 +392,8 @@ const ITInventory = () => {
         position: "relative",
         overflow: "hidden",
         animation: `${fadeIn} 0.8s ease-out`,
-        display: "flex",
-        flexDirection: "column",
-        alignItems: "center",
-        gap: 4,
+        width: "100%",
+        ml: 0,
       }}
     >
       <Box
@@ -320,7 +409,13 @@ const ITInventory = () => {
           zIndex: 0,
         }}
       />
-      <Box sx={{ position: "relative", zIndex: 1, width: "100%" }}>
+      <Box
+        sx={{
+          position: "relative",
+          zIndex: 1,
+          width: "100%",
+        }}
+      >
         <Toolbar />
         <Box
           sx={{
@@ -335,7 +430,7 @@ const ITInventory = () => {
             boxShadow: isDarkMode
               ? "0 4px 12px rgba(0, 0, 0, 0.3)"
               : "0 4px 12px rgba(0, 0, 0, 0.1)",
-            padding: { xs: "20px", sm: "30px" },
+            padding: { xs: 2, sm: 3 },
             width: "100%",
           }}
         >
@@ -344,7 +439,7 @@ const ITInventory = () => {
               display: "flex",
               justifyContent: "space-between",
               alignItems: "center",
-              mb: 4,
+              mb: 3,
             }}
           >
             <Typography
@@ -357,9 +452,110 @@ const ITInventory = () => {
             >
               IT Inventory Management
             </Typography>
+            <Box sx={{ display: "flex", gap: 2 }}>
+              <Button
+                variant="contained"
+                startIcon={<AddIcon />}
+                onClick={() => {
+                  setEditItem(null);
+                  setNewItem({
+                    name: "",
+                    category: "",
+                    serialNumber: "",
+                    warrantyEndDate: "",
+                    supportDetails: "",
+                  });
+                  setAddModalOpen(true);
+                }}
+                sx={{
+                  backgroundColor: brandingBlue,
+                  color: "#fff",
+                  borderRadius: "8px",
+                  py: 1.5,
+                  px: 3,
+                  fontSize: "1rem",
+                  transition: "all 0.3s ease",
+                  "&:hover": {
+                    backgroundColor: "#3367D6",
+                    transform: "scale(1.05)",
+                  },
+                  "&:active": { backgroundColor: brandingBlue },
+                  "&:disabled": {
+                    backgroundColor: disabledColor,
+                    color: "#fff",
+                  },
+                }}
+                aria-label="Add new item"
+              >
+                Add Item
+              </Button>
+              <Button
+                variant="outlined"
+                startIcon={<FileUploadIcon />}
+                onClick={() => setBulkUploadModalOpen(true)}
+                sx={{
+                  backgroundColor: isDarkMode ? "#fff" : "transparent",
+                  color: isDarkMode ? "#333" : muiTheme.palette.text.primary,
+                  border: !isDarkMode ? "1px solid #333" : "none",
+                  borderRadius: "8px",
+                  py: 1.5,
+                  px: 3,
+                  fontSize: "1rem",
+                  transition: "all 0.3s ease",
+                  "&:hover": {
+                    backgroundColor: hoverBackground,
+                    borderColor: greenLightColor,
+                    transform: "scale(1.05)",
+                    color: isDarkMode
+                      ? "#fff"
+                      : "muiTheme.palette.text.primary",
+                  },
+                  "&:active": { borderColor: greenLightColor },
+                  "&:disabled": {
+                    borderColor: disabledColor,
+                    color: disabledColor,
+                  },
+                }}
+                aria-label="Bulk upload items"
+              >
+                Bulk Upload
+              </Button>
+              <Button
+                variant="outlined"
+                startIcon={<Assignment />}
+                onClick={() => setAssignModalOpen(true)}
+                sx={{
+                  backgroundColor: isDarkMode ? "#fff" : "transparent",
+                  color: isDarkMode ? "#333" : muiTheme.palette.text.primary,
+                  border: !isDarkMode ? "1px solid #333" : "none",
+                  borderRadius: "8px",
+
+                  py: 1.5,
+                  px: 3,
+                  fontSize: "1rem",
+                  transition: "all 0.3s ease",
+                  "&:hover": {
+                    backgroundColor: hoverBackground,
+                    borderColor: greenLightColor,
+                    transform: "scale(1.05)",
+                    color: isDarkMode
+                      ? "#fff"
+                      : "muiTheme.palette.text.primary",
+                  },
+                  "&:active": { borderColor: greenLightColor },
+                  "&:disabled": {
+                    borderColor: disabledColor,
+                    color: disabledColor,
+                  },
+                }}
+                aria-label="Assign item"
+              >
+                Assign Item
+              </Button>
+            </Box>
           </Box>
 
-          {/* Search, Filter, and Buttons Section */}
+          {/* Search and Filter Section */}
           <Box
             sx={{
               display: "flex",
@@ -375,13 +571,13 @@ const ITInventory = () => {
               onChange={(e) => setSearchQuery(e.target.value)}
               InputProps={{
                 startAdornment: (
-                  <Search
+                  <SearchIcon
                     sx={{ mr: 1, color: muiTheme.palette.text.secondary }}
                   />
                 ),
               }}
               sx={{
-                flex: "1 1 300px",
+                flex: { xs: "1 1 100%", sm: "1 1 300px" },
                 "& .MuiOutlinedInput-root": {
                   borderRadius: "8px",
                   background: muiTheme.palette.background.listItem,
@@ -390,8 +586,9 @@ const ITInventory = () => {
                   "&.Mui-focused fieldset": { borderColor: greenLightColor },
                 },
               }}
+              aria-label="Search inventory"
             />
-            <FormControl sx={{ minWidth: 150 }}>
+            <FormControl sx={{ minWidth: { xs: "100%", sm: 150 } }}>
               <InputLabel sx={{ color: muiTheme.palette.text.secondary }}>
                 Status
               </InputLabel>
@@ -412,6 +609,7 @@ const ITInventory = () => {
                     borderColor: greenLightColor,
                   },
                 }}
+                aria-label="Filter by status"
               >
                 <MenuItem value="">All</MenuItem>
                 <MenuItem value="Assigned">Assigned</MenuItem>
@@ -420,7 +618,7 @@ const ITInventory = () => {
                 <MenuItem value="Retired">Retired</MenuItem>
               </Select>
             </FormControl>
-            <FormControl sx={{ minWidth: 150 }}>
+            <FormControl sx={{ minWidth: { xs: "100%", sm: 150 } }}>
               <InputLabel sx={{ color: muiTheme.palette.text.secondary }}>
                 Category
               </InputLabel>
@@ -441,6 +639,7 @@ const ITInventory = () => {
                     borderColor: greenLightColor,
                   },
                 }}
+                aria-label="Filter by category"
               >
                 <MenuItem value="">All</MenuItem>
                 <MenuItem value="Laptop">Laptop</MenuItem>
@@ -451,100 +650,32 @@ const ITInventory = () => {
                 <MenuItem value="Other">Other</MenuItem>
               </Select>
             </FormControl>
-            <Box sx={{ display: "flex", gap: 2, flexWrap: "wrap" }}>
-              <Button
-                variant="outlined"
-                startIcon={<Add />}
-                onClick={() => setAddModalOpen(true)}
-                sx={{
-                  backgroundColor: isDarkMode ? "#ffffff" : "transparent",
-                  color: isDarkMode ? "#333333" : muiTheme.palette.text.primary,
-                  borderColor: isDarkMode
-                    ? "#ffffff"
-                    : muiTheme.palette.border.main,
-                  borderRadius: "8px",
-                  py: 1,
-                  px: 3,
-                  transition: "all 0.3s ease",
-                  "&:hover": {
-                    backgroundColor: isDarkMode ? "#e0e0e0" : hoverBackground,
-                    borderColor: isDarkMode ? "#e0e0e0" : greenLightColor,
-                    transform: "scale(1.05)",
-                  },
-                }}
-              >
-                Add Item
-              </Button>
-              <Button
-                variant="outlined"
-                startIcon={<Upload />}
-                onClick={() => setBulkUploadModalOpen(true)}
-                sx={{
-                  backgroundColor: isDarkMode ? "#ffffff" : "transparent",
-                  color: isDarkMode ? "#333333" : muiTheme.palette.text.primary,
-                  borderColor: isDarkMode
-                    ? "#ffffff"
-                    : muiTheme.palette.border.main,
-                  borderRadius: "8px",
-                  py: 1,
-                  px: 3,
-                  transition: "all 0.3s ease",
-                  "&:hover": {
-                    backgroundColor: isDarkMode ? "#e0e0e0" : hoverBackground,
-                    borderColor: isDarkMode ? "#e0e0e0" : greenLightColor,
-                    transform: "scale(1.05)",
-                  },
-                }}
-              >
-                Bulk Upload
-              </Button>
-              <Button
-                variant="outlined"
-                startIcon={<Assignment />}
-                onClick={() => setAssignModalOpen(true)}
-                sx={{
-                  backgroundColor: isDarkMode ? "#ffffff" : "transparent",
-                  color: isDarkMode ? "#333333" : muiTheme.palette.text.primary,
-                  borderColor: isDarkMode
-                    ? "#ffffff"
-                    : muiTheme.palette.border.main,
-                  borderRadius: "8px",
-                  py: 1,
-                  px: 3,
-                  transition: "all 0.3s ease",
-                  "&:hover": {
-                    backgroundColor: isDarkMode ? "#e0e0e0" : hoverBackground,
-                    borderColor: isDarkMode ? "#e0e0e0" : greenLightColor,
-                    transform: "scale(1.05)",
-                  },
-                }}
-              >
-                Assign Item
-              </Button>
-            </Box>
           </Box>
 
           {/* Data Table */}
           <TableContainer
             component={Paper}
-            sx={{ background: muiTheme.palette.background.listItem }}
+            sx={{
+              background: muiTheme.palette.background.listItem,
+              overflowX: "auto",
+            }}
           >
-            <Table>
+            <Table aria-label="Inventory assignments table">
               <TableHead>
                 <TableRow>
                   <TableCell>Member</TableCell>
-                  <TableCell>Item</TableCell>
-                  <TableCell>Serial Number</TableCell>
-                  <TableCell>Category</TableCell>
-                  <TableCell>Status</TableCell>
-                  <TableCell>Assigned At</TableCell>
-                  <TableCell>Warranty</TableCell>
-                  <TableCell>Acknowledgment</TableCell>
-                  <TableCell>Actions</TableCell>
+                  <TableCell sx={{ minWidth: 150 }}>Item</TableCell>
+                  <TableCell sx={{ minWidth: 150 }}>Serial Number</TableCell>
+                  <TableCell sx={{ minWidth: 120 }}>Category</TableCell>
+                  <TableCell sx={{ minWidth: 120 }}>Status</TableCell>
+                  <TableCell sx={{ minWidth: 120 }}>Assigned At</TableCell>
+                  <TableCell sx={{ minWidth: 100 }}>Warranty</TableCell>
+                  <TableCell sx={{ minWidth: 120 }}>Acknowledgment</TableCell>
+                  <TableCell sx={{ minWidth: 150 }}>Actions</TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>
-                {filteredAssignments.map((assignment) => {
+                {paginatedAssignments.map((assignment) => {
                   const warrantyEndDate = assignment.itemId?.warrantyEndDate;
                   const daysUntilExpiry = warrantyEndDate
                     ? Math.floor(
@@ -562,7 +693,12 @@ const ITInventory = () => {
                   return (
                     <TableRow key={assignment._id}>
                       <TableCell
-                        sx={{ display: "flex", alignItems: "center", gap: 1 }}
+                        sx={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 1,
+                          py: 2,
+                        }}
                       >
                         <Avatar
                           src={
@@ -580,22 +716,24 @@ const ITInventory = () => {
                             }`
                           : "N/A"}
                       </TableCell>
-                      <TableCell>{assignment.itemId?.name || "N/A"}</TableCell>
-                      <TableCell>
+                      <TableCell sx={{ py: 2 }}>
+                        {assignment.itemId?.name || "N/A"}
+                      </TableCell>
+                      <TableCell sx={{ py: 2 }}>
                         {assignment.itemId?.serialNumber || "N/A"}
                       </TableCell>
-                      <TableCell>
+                      <TableCell sx={{ py: 2 }}>
                         {assignment.itemId?.category || "N/A"}
                       </TableCell>
-                      <TableCell>
+                      <TableCell sx={{ py: 2 }}>
                         {assignment.itemId?.status || "N/A"}
                       </TableCell>
-                      <TableCell>
+                      <TableCell sx={{ py: 2 }}>
                         {assignment.assignedAt
                           ? new Date(assignment.assignedAt).toLocaleDateString()
                           : "N/A"}
                       </TableCell>
-                      <TableCell>
+                      <TableCell sx={{ py: 2 }}>
                         {warrantyStatus === "Expired" ? (
                           <Tooltip title="Warranty Expired">
                             <Warning
@@ -618,7 +756,7 @@ const ITInventory = () => {
                           "N/A"
                         )}
                       </TableCell>
-                      <TableCell>
+                      <TableCell sx={{ py: 2 }}>
                         {assignment.acknowledgmentDocument ? (
                           <IconButton
                             onClick={() => {
@@ -632,6 +770,7 @@ const ITInventory = () => {
                               );
                             }}
                             sx={{ color: muiTheme.palette.primary.main }}
+                            aria-label="View acknowledgment document"
                           >
                             <Visibility />
                           </IconButton>
@@ -639,41 +778,97 @@ const ITInventory = () => {
                           "N/A"
                         )}
                       </TableCell>
-                      <TableCell>
-                        <IconButton
-                          onClick={() => {
-                            setSelectedAssignment(assignment);
-                            setReturnModalOpen(true);
-                          }}
-                          disabled={assignment.returnedAt}
-                          sx={{ color: muiTheme.palette.primary.main }}
-                        >
-                          <AssignmentReturn />
-                        </IconButton>
-                        <IconButton
-                          onClick={() => {
-                            setSelectedAssignment(assignment);
-                            setReassignModalOpen(true);
-                          }}
-                          disabled={assignment.returnedAt}
-                          sx={{ color: muiTheme.palette.primary.main }}
-                        >
-                          <SwapHoriz />
-                        </IconButton>
+                      <TableCell sx={{ py: 2 }}>
+                        <Tooltip title="View Item">
+                          <IconButton
+                            onClick={() => handleViewItem(assignment.itemId)}
+                            sx={{ color: muiTheme.palette.primary.main }}
+                            aria-label={`View ${assignment.itemId?.name}`}
+                          >
+                            <Visibility />
+                          </IconButton>
+                        </Tooltip>
+                        <Tooltip title="Edit Item">
+                          <IconButton
+                            onClick={() => handleEditItem(assignment.itemId)}
+                            sx={{ color: muiTheme.palette.primary.main }}
+                            aria-label={`Edit ${assignment.itemId?.name}`}
+                          >
+                            <EditIcon />
+                          </IconButton>
+                        </Tooltip>
+                        <Tooltip title="Delete Item">
+                          <IconButton
+                            onClick={() => {
+                              setItemToDelete(assignment.itemId);
+                              setDeleteModalOpen(true);
+                            }}
+                            sx={{ color: muiTheme.palette.error.main }}
+                            aria-label={`Delete ${assignment.itemId?.name}`}
+                          >
+                            <DeleteIcon />
+                          </IconButton>
+                        </Tooltip>
+                        <Tooltip title="Return">
+                          <IconButton
+                            onClick={() => {
+                              setSelectedAssignment(assignment);
+                              setReturnModalOpen(true);
+                            }}
+                            disabled={assignment.returnedAt}
+                            sx={{ color: muiTheme.palette.primary.main }}
+                            aria-label={`Return ${assignment.itemId?.name}`}
+                          >
+                            <AssignmentReturn />
+                          </IconButton>
+                        </Tooltip>
+                        <Tooltip title="Reassign">
+                          <IconButton
+                            onClick={() => {
+                              setSelectedAssignment(assignment);
+                              setReassignModalOpen(true);
+                            }}
+                            disabled={assignment.returnedAt}
+                            sx={{ color: muiTheme.palette.primary.main }}
+                            aria-label={`Reassign ${assignment.itemId?.name}`}
+                          >
+                            <SwapHoriz />
+                          </IconButton>
+                        </Tooltip>
                       </TableCell>
                     </TableRow>
                   );
                 })}
               </TableBody>
             </Table>
+            <TablePagination
+              rowsPerPageOptions={[5, 10, 25]}
+              component="div"
+              count={filteredAssignments.length}
+              rowsPerPage={rowsPerPage}
+              page={page}
+              onPageChange={handleChangePage}
+              onRowsPerPageChange={handleChangeRowsPerPage}
+              aria-label="Table pagination"
+            />
           </TableContainer>
         </Box>
       </Box>
 
-      {/* Add Item Modal */}
+      {/* Add/Edit Item Modal */}
       <Dialog
         open={addModalOpen}
-        onClose={() => setAddModalOpen(false)}
+        onClose={() => {
+          setAddModalOpen(false);
+          setEditItem(null);
+          setNewItem({
+            name: "",
+            category: "",
+            serialNumber: "",
+            warrantyEndDate: "",
+            supportDetails: "",
+          });
+        }}
         maxWidth="sm"
         fullWidth
         disableEnforceFocus
@@ -686,7 +881,7 @@ const ITInventory = () => {
             color: muiTheme.palette.primary.main,
           }}
         >
-          Add New Inventory Item
+          {editItem ? "Edit Inventory Item" : "Add New Inventory Item"}
         </DialogTitle>
         <DialogContent>
           <TextField
@@ -696,6 +891,7 @@ const ITInventory = () => {
             fullWidth
             margin="normal"
             required
+            aria-label="Item name"
           />
           <FormControl fullWidth margin="normal">
             <InputLabel>Category</InputLabel>
@@ -705,6 +901,7 @@ const ITInventory = () => {
                 setNewItem({ ...newItem, category: e.target.value })
               }
               label="Category"
+              aria-label="Item category"
             >
               <MenuItem value="Laptop">Laptop</MenuItem>
               <MenuItem value="Monitor">Monitor</MenuItem>
@@ -723,6 +920,7 @@ const ITInventory = () => {
             fullWidth
             margin="normal"
             required
+            aria-label="Serial number"
           />
           <TextField
             label="Warranty End Date"
@@ -734,6 +932,7 @@ const ITInventory = () => {
             fullWidth
             margin="normal"
             InputLabelProps={{ shrink: true }}
+            aria-label="Warranty end date"
           />
           <TextField
             label="Support Details"
@@ -745,12 +944,152 @@ const ITInventory = () => {
             margin="normal"
             multiline
             rows={3}
+            aria-label="Support details"
           />
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setAddModalOpen(false)}>Cancel</Button>
-          <Button onClick={handleAddItem} variant="contained" color="primary">
-            Add
+          <Button
+            onClick={() => {
+              setAddModalOpen(false);
+              setEditItem(null);
+              setNewItem({
+                name: "",
+                category: "",
+                serialNumber: "",
+                warrantyEndDate: "",
+                supportDetails: "",
+              });
+            }}
+            sx={{
+              fontFamily: "'Poppins', sans-serif",
+              color: muiTheme.palette.text.primary,
+            }}
+            aria-label="Cancel add/edit item"
+          >
+            Cancel
+          </Button>
+          <Button
+            onClick={handleAddItem}
+            variant="contained"
+            sx={{
+              fontFamily: "'Poppins', sans-serif",
+              backgroundColor: brandingBlue,
+              color: "#fff",
+              "&:hover": {
+                backgroundColor: "#3367D6",
+                transform: "scale(1.05)",
+              },
+              transition: "all 0.3s ease",
+            }}
+            aria-label={editItem ? "Update item" : "Add item"}
+          >
+            {editItem ? "Update" : "Add"}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* View Item Modal */}
+      <Dialog
+        open={viewModalOpen}
+        onClose={() => setViewModalOpen(false)}
+        maxWidth="sm"
+        fullWidth
+        disableEnforceFocus
+        aria-labelledby="view-item-modal-title"
+      >
+        <DialogTitle
+          id="view-item-modal-title"
+          sx={{
+            fontFamily: "'Poppins', sans-serif",
+            color: muiTheme.palette.primary.main,
+          }}
+        >
+          View Inventory Item
+        </DialogTitle>
+        <DialogContent>
+          <Typography variant="body1" sx={{ mb: 1 }}>
+            <strong>Name:</strong> {viewItem?.name || "N/A"}
+          </Typography>
+          <Typography variant="body1" sx={{ mb: 1 }}>
+            <strong>Category:</strong> {viewItem?.category || "N/A"}
+          </Typography>
+          <Typography variant="body1" sx={{ mb: 1 }}>
+            <strong>Serial Number:</strong> {viewItem?.serialNumber || "N/A"}
+          </Typography>
+          <Typography variant="body1" sx={{ mb: 1 }}>
+            <strong>Warranty End Date:</strong>{" "}
+            {viewItem?.warrantyEndDate
+              ? new Date(viewItem.warrantyEndDate).toLocaleDateString()
+              : "N/A"}
+          </Typography>
+          <Typography variant="body1" sx={{ mb: 1 }}>
+            <strong>Support Details:</strong>{" "}
+            {viewItem?.supportDetails || "N/A"}
+          </Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button
+            onClick={() => setViewModalOpen(false)}
+            sx={{
+              fontFamily: "'Poppins', sans-serif",
+              color: muiTheme.palette.text.primary,
+            }}
+            aria-label="Close view item"
+          >
+            Close
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Delete Item Modal */}
+      <Dialog
+        open={deleteModalOpen}
+        onClose={() => setDeleteModalOpen(false)}
+        maxWidth="sm"
+        fullWidth
+        disableEnforceFocus
+        aria-labelledby="delete-item-modal-title"
+      >
+        <DialogTitle
+          id="delete-item-modal-title"
+          sx={{
+            fontFamily: "'Poppins', sans-serif",
+            color: muiTheme.palette.error.main,
+          }}
+        >
+          Confirm Delete
+        </DialogTitle>
+        <DialogContent>
+          <Typography
+            sx={{
+              fontFamily: "'Poppins', sans-serif",
+              color: muiTheme.palette.text.primary,
+            }}
+          >
+            Are you sure you want to delete the item "{itemToDelete?.name}"?
+            This action cannot be undone.
+          </Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button
+            onClick={() => setDeleteModalOpen(false)}
+            sx={{
+              fontFamily: "'Poppins', sans-serif",
+              color: muiTheme.palette.text.primary,
+            }}
+            aria-label="Cancel delete"
+          >
+            Cancel
+          </Button>
+          <Button
+            onClick={handleDeleteItem}
+            sx={{
+              fontFamily: "'Poppins', sans-serif",
+              color: muiTheme.palette.error.main,
+            }}
+            aria-label="Confirm delete"
+          >
+            Delete
           </Button>
         </DialogActions>
       </Dialog>
@@ -783,16 +1122,36 @@ const ITInventory = () => {
               type="file"
               accept=".csv"
               onChange={(e) => setBulkUploadFile(e.target.files[0])}
+              aria-label="Select CSV file"
             />
           </Box>
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setBulkUploadModalOpen(false)}>Cancel</Button>
+          <Button
+            onClick={() => setBulkUploadModalOpen(false)}
+            sx={{
+              fontFamily: "'Poppins', sans-serif",
+              color: muiTheme.palette.text.primary,
+            }}
+            aria-label="Cancel bulk upload"
+          >
+            Cancel
+          </Button>
           <Button
             onClick={handleBulkUpload}
             variant="contained"
-            color="primary"
+            sx={{
+              fontFamily: "'Poppins', sans-serif",
+              backgroundColor: brandingBlue,
+              color: "#fff",
+              "&:hover": {
+                backgroundColor: "#3367D6",
+                transform: "scale(1.05)",
+              },
+              transition: "all 0.3s ease",
+            }}
             disabled={!bulkUploadFile}
+            aria-label="Upload CSV"
           >
             Upload
           </Button>
@@ -834,6 +1193,7 @@ const ITInventory = () => {
                 margin="normal"
                 fullWidth
                 helperText="Search by item name or serial number"
+                aria-label="Select item"
               />
             )}
             sx={{ mt: 1 }}
@@ -854,6 +1214,7 @@ const ITInventory = () => {
                 margin="normal"
                 fullWidth
                 helperText="Search by user name"
+                aria-label="Select user"
               />
             )}
             sx={{ mt: 1 }}
@@ -871,16 +1232,36 @@ const ITInventory = () => {
                   acknowledgmentDocument: e.target.files[0],
                 })
               }
+              aria-label="Upload acknowledgment document"
             />
           </Box>
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setAssignModalOpen(false)}>Cancel</Button>
+          <Button
+            onClick={() => setAssignModalOpen(false)}
+            sx={{
+              fontFamily: "'Poppins', sans-serif",
+              color: muiTheme.palette.text.primary,
+            }}
+            aria-label="Cancel assign item"
+          >
+            Cancel
+          </Button>
           <Button
             onClick={handleAssignItem}
             variant="contained"
-            color="primary"
+            sx={{
+              fontFamily: "'Poppins', sans-serif",
+              backgroundColor: brandingBlue,
+              color: "#fff",
+              "&:hover": {
+                backgroundColor: "#3367D6",
+                transform: "scale(1.05)",
+              },
+              transition: "all 0.3s ease",
+            }}
             disabled={!assignment.item || !assignment.user}
+            aria-label="Assign item"
           >
             Assign
           </Button>
@@ -906,7 +1287,12 @@ const ITInventory = () => {
           Return Item
         </DialogTitle>
         <DialogContent>
-          <Typography>
+          <Typography
+            sx={{
+              fontFamily: "'Poppins', sans-serif",
+              color: muiTheme.palette.text.primary,
+            }}
+          >
             Are you sure you want to return{" "}
             {selectedAssignment?.itemId?.name || "N/A"} assigned to{" "}
             {selectedAssignment?.userId?.firstName || ""}{" "}
@@ -914,8 +1300,31 @@ const ITInventory = () => {
           </Typography>
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setReturnModalOpen(false)}>Cancel</Button>
-          <Button onClick={handleReturnItem} variant="contained" color="error">
+          <Button
+            onClick={() => setReturnModalOpen(false)}
+            sx={{
+              fontFamily: "'Poppins', sans-serif",
+              color: muiTheme.palette.text.primary,
+            }}
+            aria-label="Cancel return"
+          >
+            Cancel
+          </Button>
+          <Button
+            onClick={handleReturnItem}
+            variant="contained"
+            sx={{
+              fontFamily: "'Poppins', sans-serif",
+              backgroundColor: "#D32F2F",
+              color: "#fff",
+              "&:hover": {
+                backgroundColor: "#B71C1C",
+                transform: "scale(1.05)",
+              },
+              transition: "all 0.3s ease",
+            }}
+            aria-label="Confirm return"
+          >
             Return
           </Button>
         </DialogActions>
@@ -940,7 +1349,13 @@ const ITInventory = () => {
           Reassign Item
         </DialogTitle>
         <DialogContent>
-          <Typography sx={{ mb: 2 }}>
+          <Typography
+            sx={{
+              mb: 2,
+              fontFamily: "'Poppins', sans-serif",
+              color: muiTheme.palette.text.primary,
+            }}
+          >
             Reassign {selectedAssignment?.itemId?.name || "N/A"} from{" "}
             {selectedAssignment?.userId?.firstName || ""}{" "}
             {selectedAssignment?.userId?.lastName || ""} to:
@@ -960,18 +1375,38 @@ const ITInventory = () => {
                 label="Select User"
                 fullWidth
                 helperText="Search by user name"
+                aria-label="Select user to reassign"
               />
             )}
             sx={{ mt: 1 }}
           />
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setReassignModalOpen(false)}>Cancel</Button>
+          <Button
+            onClick={() => setReassignModalOpen(false)}
+            sx={{
+              fontFamily: "'Poppins', sans-serif",
+              color: muiTheme.palette.text.primary,
+            }}
+            aria-label="Cancel reassign"
+          >
+            Cancel
+          </Button>
           <Button
             onClick={handleReassignItem}
             variant="contained"
-            color="primary"
+            sx={{
+              fontFamily: "'Poppins', sans-serif",
+              backgroundColor: brandingBlue,
+              color: "#fff",
+              "&:hover": {
+                backgroundColor: "#3367D6",
+                transform: "scale(1.05)",
+              },
+              transition: "all 0.3s ease",
+            }}
             disabled={!reassignUserId}
+            aria-label="Reassign item"
           >
             Reassign
           </Button>

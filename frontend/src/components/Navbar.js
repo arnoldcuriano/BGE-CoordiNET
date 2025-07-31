@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from "react";
 import {
   AppBar,
   Toolbar,
@@ -12,21 +12,33 @@ import {
   Tooltip,
   TextField,
   Badge,
-  List,
   ListItem,
   ListItemText,
   ListItemSecondaryAction,
   Button,
-} from '@mui/material';
-import MenuIcon from '@mui/icons-material/Menu';
-import CloseIcon from '@mui/icons-material/Close';
-import { Link, useNavigate } from 'react-router-dom';
-import { LightMode, DarkMode, Notifications, Search, Apps, Palette } from '@mui/icons-material';
-import { useAuth } from '../context/AuthContext';
-import { useTheme } from '../context/ThemeContext';
-import axios from 'axios';
+} from "@mui/material";
+import MenuIcon from "@mui/icons-material/Menu";
+import CloseIcon from "@mui/icons-material/Close";
+import { Link, useNavigate } from "react-router-dom";
+import {
+  LightMode,
+  DarkMode,
+  Notifications,
+  Search,
+  Apps,
+  Palette,
+} from "@mui/icons-material";
+import { useAuth } from "../context/AuthContext";
+import { useTheme } from "../context/ThemeContext";
+import axios from "axios";
 
-const Navbar = ({ handleDrawerToggle, user, open, handleDrawerOpen, handleDrawerClose }) => {
+const Navbar = ({
+  handleDrawerToggle,
+  user,
+  open,
+  handleDrawerOpen,
+  handleDrawerClose,
+}) => {
   const { isDarkMode, toggleTheme, muiTheme } = useTheme();
   const [anchorEl, setAnchorEl] = useState(null);
   const [notifAnchorEl, setNotifAnchorEl] = useState(null);
@@ -42,31 +54,37 @@ const Navbar = ({ handleDrawerToggle, user, open, handleDrawerOpen, handleDrawer
   const { handleLogout } = useAuth();
 
   // Determine the color for icons and text based on mode
-  const iconTextColor = isDarkMode ? muiTheme.palette.text.primary : muiTheme.palette.primary.main;
+  const iconTextColor = isDarkMode
+    ? muiTheme.palette.text.primary
+    : muiTheme.palette.primary.main;
 
   // Determine the background gradient based on mode
   const backgroundGradient = isDarkMode
     ? muiTheme.custom.gradients.backgroundDefault
-    : 'linear-gradient(90deg, #e3ffe7 0%, #d9e7ff 100%)';
+    : "linear-gradient(90deg, #e3ffe7 0%, #d9e7ff 100%)";
 
   // Fetch notifications on component mount
   useEffect(() => {
     const fetchNotifications = async () => {
       try {
         // Fetch inventory notifications
-        const inventoryResponse = await axios.get('/api/inventory/notifications');
+        const inventoryResponse = await axios.get(
+          "/api/inventory/notifications"
+        );
         // Fetch partner notifications (assuming endpoint exists)
-        const partnerResponse = await axios.get('/api/partners/notifications');
+        const partnerResponse = await axios.get("/api/partners/notifications");
         // Combine notifications
         const combinedNotifications = [
-          ...inventoryResponse.data.map(n => ({ ...n, type: 'inventory' })),
-          ...partnerResponse.data.map(n => ({ ...n, type: 'partner' })),
+          ...inventoryResponse.data.map((n) => ({ ...n, type: "inventory" })),
+          ...partnerResponse.data.map((n) => ({ ...n, type: "partner" })),
         ];
         // Sort by createdAt (newest first)
-        combinedNotifications.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+        combinedNotifications.sort(
+          (a, b) => new Date(b.createdAt) - new Date(a.createdAt)
+        );
         setNotifications(combinedNotifications);
       } catch (err) {
-        console.error('Error fetching notifications:', err);
+        console.error("Error fetching notifications:", err);
       }
     };
 
@@ -75,14 +93,18 @@ const Navbar = ({ handleDrawerToggle, user, open, handleDrawerOpen, handleDrawer
 
   const handleMarkNotificationRead = async (notificationId, type) => {
     try {
-      if (type === 'inventory') {
+      if (type === "inventory") {
         await axios.post(`/api/inventory/notifications/${notificationId}/read`);
-      } else if (type === 'partner') {
+      } else if (type === "partner") {
         await axios.post(`/api/partners/notifications/${notificationId}/read`);
       }
-      setNotifications(notifications.map(n => n._id === notificationId ? { ...n, read: true } : n));
+      setNotifications(
+        notifications.map((n) =>
+          n._id === notificationId ? { ...n, read: true } : n
+        )
+      );
     } catch (err) {
-      console.error('Error marking notification as read:', err);
+      console.error("Error marking notification as read:", err);
     }
   };
 
@@ -122,7 +144,7 @@ const Navbar = ({ handleDrawerToggle, user, open, handleDrawerOpen, handleDrawer
     handleClose();
     const success = await handleLogout(navigate);
     if (success) {
-      navigate('/login');
+      navigate("/login");
     }
   };
 
@@ -144,14 +166,14 @@ const Navbar = ({ handleDrawerToggle, user, open, handleDrawerOpen, handleDrawer
   };
 
   const apps = [
-    { name: 'CoordiNET Dashboard', path: '/dashboard' },
-    { name: 'CoordiNET Analytics', path: '/analytics' },
+    { name: "CoordiNET Dashboard", path: "/dashboard" },
+    { name: "CoordiNET Analytics", path: "/analytics" },
   ];
 
   const colors = [
-    { name: 'Blue', value: '#1976d2' },
-    { name: 'Green', value: '#34A853' },
-    { name: 'Purple', value: '#9C27B0' },
+    { name: "Blue", value: "#1976d2" },
+    { name: "Green", value: "#34A853" },
+    { name: "Purple", value: "#9C27B0" },
   ];
 
   const transitionDuration = muiTheme.transitions?.duration?.standard ?? 300;
@@ -162,18 +184,18 @@ const Navbar = ({ handleDrawerToggle, user, open, handleDrawerOpen, handleDrawer
       sx={{
         zIndex: (theme) => theme.zIndex.drawer + 1,
         background: backgroundGradient,
-        backdropFilter: 'blur(10px)',
+        backdropFilter: "blur(10px)",
         boxShadow: muiTheme.custom.shadows.paper,
         borderBottom: `1px solid ${muiTheme.palette.border.main}`,
-        height: '64px',
+        height: "64px",
       }}
     >
       <Toolbar
         sx={{
-          height: '64px',
-          minHeight: '64px !important',
+          height: "64px",
+          minHeight: "64px !important",
           paddingLeft: { xs: 0, sm: 0 },
-          paddingRight: { xs: '16px', sm: '24px' },
+          paddingRight: { xs: "16px", sm: "24px" },
           background: backgroundGradient,
         }}
       >
@@ -186,10 +208,12 @@ const Navbar = ({ handleDrawerToggle, user, open, handleDrawerOpen, handleDrawer
             mr: 2,
             ml: 1,
             color: iconTextColor,
-            '&:hover': {
+            "&:hover": {
               backgroundColor: muiTheme.custom.gradients.listItemHover,
             },
-            transition: `all ${transitionDuration}ms ${muiTheme.custom.transitions?.easing?.easeInOut ?? 'ease-in-out'}`,
+            transition: `all ${transitionDuration}ms ${
+              muiTheme.custom.transitions?.easing?.easeInOut ?? "ease-in-out"
+            }`,
           }}
         >
           {open ? <CloseIcon /> : <MenuIcon />}
@@ -204,18 +228,20 @@ const Navbar = ({ handleDrawerToggle, user, open, handleDrawerOpen, handleDrawer
             fontFamily: muiTheme.typography.fontFamily,
             fontWeight: 700,
             color: muiTheme.palette.primary.main,
-            textDecoration: 'none',
+            textDecoration: "none",
           }}
         >
-          BGE
+          BGE ERP Application
         </Typography>
-        <Box sx={{ display: 'flex', alignItems: 'center' }}>
+        <Box sx={{ display: "flex", alignItems: "center" }}>
           <Box
             sx={{
-              display: searchOpen ? 'block' : 'none',
-              width: searchOpen ? '200px' : '0px',
-              overflow: 'hidden',
-              transition: `width ${transitionDuration}ms ${muiTheme.custom.transitions?.easing?.easeInOut ?? 'ease-in-out'}`,
+              display: searchOpen ? "block" : "none",
+              width: searchOpen ? "200px" : "0px",
+              overflow: "hidden",
+              transition: `width ${transitionDuration}ms ${
+                muiTheme.custom.transitions?.easing?.easeInOut ?? "ease-in-out"
+              }`,
               mr: searchOpen ? 2 : 0,
             }}
           >
@@ -225,19 +251,22 @@ const Navbar = ({ handleDrawerToggle, user, open, handleDrawerOpen, handleDrawer
               autoFocus
               onBlur={() => setSearchOpen(false)}
               sx={{
-                width: '200px',
+                width: "200px",
                 backgroundColor: muiTheme.custom.gradients.listItem,
-                borderRadius: '12px',
-                '& .MuiInputBase-root': {
-                  border: 'none',
-                  background: 'transparent',
+                borderRadius: "12px",
+                "& .MuiInputBase-root": {
+                  border: "none",
+                  background: "transparent",
                   color: iconTextColor,
                   fontFamily: muiTheme.typography.fontFamily,
                 },
-                '& .MuiInputBase-input': {
-                  padding: '8px 16px',
+                "& .MuiInputBase-input": {
+                  padding: "8px 16px",
                 },
-                transition: `all ${transitionDuration}ms ${muiTheme.custom.transitions?.easing?.easeInOut ?? 'ease-in-out'}`,
+                transition: `all ${transitionDuration}ms ${
+                  muiTheme.custom.transitions?.easing?.easeInOut ??
+                  "ease-in-out"
+                }`,
               }}
             />
           </Box>
@@ -248,10 +277,13 @@ const Navbar = ({ handleDrawerToggle, user, open, handleDrawerOpen, handleDrawer
               sx={{
                 mr: 1,
                 color: iconTextColor,
-                '&:hover': {
+                "&:hover": {
                   backgroundColor: muiTheme.custom.gradients.listItemHover,
                 },
-                transition: `all ${transitionDuration}ms ${muiTheme.custom.transitions?.easing?.easeInOut ?? 'ease-in-out'}`,
+                transition: `all ${transitionDuration}ms ${
+                  muiTheme.custom.transitions?.easing?.easeInOut ??
+                  "ease-in-out"
+                }`,
               }}
             >
               <Search />
@@ -263,13 +295,18 @@ const Navbar = ({ handleDrawerToggle, user, open, handleDrawerOpen, handleDrawer
             sx={{
               mr: 1,
               color: iconTextColor,
-              '&:hover': {
+              "&:hover": {
                 backgroundColor: muiTheme.custom.gradients.listItemHover,
               },
-              transition: `all ${transitionDuration}ms ${muiTheme.custom.transitions?.easing?.easeInOut ?? 'ease-in-out'}`,
+              transition: `all ${transitionDuration}ms ${
+                muiTheme.custom.transitions?.easing?.easeInOut ?? "ease-in-out"
+              }`,
             }}
           >
-            <Badge badgeContent={notifications.filter(n => !n.read).length} color="error">
+            <Badge
+              badgeContent={notifications.filter((n) => !n.read).length}
+              color="error"
+            >
               <Notifications />
             </Badge>
           </IconButton>
@@ -282,9 +319,9 @@ const Navbar = ({ handleDrawerToggle, user, open, handleDrawerOpen, handleDrawer
                 background: muiTheme.palette.background.glass,
                 boxShadow: muiTheme.custom.shadows.paper,
                 border: muiTheme.palette.border.glass,
-                maxHeight: '300px',
-                width: '250px',
-                overflowY: 'auto',
+                maxHeight: "300px",
+                width: "250px",
+                overflowY: "auto",
               },
             }}
           >
@@ -294,10 +331,12 @@ const Navbar = ({ handleDrawerToggle, user, open, handleDrawerOpen, handleDrawer
                   key={notif._id}
                   sx={{
                     fontFamily: muiTheme.typography.fontFamily,
-                    fontSize: '0.85rem',
+                    fontSize: "0.85rem",
                     color: iconTextColor,
-                    backgroundColor: notif.read ? 'transparent' : muiTheme.palette.action.hover,
-                    '&:hover': {
+                    backgroundColor: notif.read
+                      ? "transparent"
+                      : muiTheme.palette.action.hover,
+                    "&:hover": {
                       backgroundColor: muiTheme.custom.gradients.listItemHover,
                     },
                   }}
@@ -306,17 +345,22 @@ const Navbar = ({ handleDrawerToggle, user, open, handleDrawerOpen, handleDrawer
                     primary={notif.message}
                     secondary={new Date(notif.createdAt).toLocaleString()}
                     primaryTypographyProps={{
-                      fontSize: '0.85rem',
+                      fontSize: "0.85rem",
                     }}
                     secondaryTypographyProps={{
-                      fontSize: '0.75rem',
+                      fontSize: "0.75rem",
                     }}
                   />
                   <ListItemSecondaryAction>
                     {!notif.read && (
                       <Button
-                        onClick={() => handleMarkNotificationRead(notif._id, notif.type)}
-                        sx={{ color: muiTheme.palette.primary.main, fontSize: '0.75rem' }}
+                        onClick={() =>
+                          handleMarkNotificationRead(notif._id, notif.type)
+                        }
+                        sx={{
+                          color: muiTheme.palette.primary.main,
+                          fontSize: "0.75rem",
+                        }}
                       >
                         Mark as Read
                       </Button>
@@ -328,7 +372,7 @@ const Navbar = ({ handleDrawerToggle, user, open, handleDrawerOpen, handleDrawer
               <MenuItem
                 sx={{
                   fontFamily: muiTheme.typography.fontFamily,
-                  fontSize: '0.85rem',
+                  fontSize: "0.85rem",
                   color: iconTextColor,
                 }}
               >
@@ -342,10 +386,12 @@ const Navbar = ({ handleDrawerToggle, user, open, handleDrawerOpen, handleDrawer
             sx={{
               mr: 1,
               color: iconTextColor,
-              '&:hover': {
+              "&:hover": {
                 backgroundColor: muiTheme.custom.gradients.listItemHover,
               },
-              transition: `all ${transitionDuration}ms ${muiTheme.custom.transitions?.easing?.easeInOut ?? 'ease-in-out'}`,
+              transition: `all ${transitionDuration}ms ${
+                muiTheme.custom.transitions?.easing?.easeInOut ?? "ease-in-out"
+              }`,
             }}
           >
             <Apps />
@@ -370,9 +416,9 @@ const Navbar = ({ handleDrawerToggle, user, open, handleDrawerOpen, handleDrawer
                 to={app.path}
                 sx={{
                   fontFamily: muiTheme.typography.fontFamily,
-                  fontSize: '0.85rem',
+                  fontSize: "0.85rem",
                   color: iconTextColor,
-                  '&:hover': {
+                  "&:hover": {
                     backgroundColor: muiTheme.custom.gradients.listItemHover,
                   },
                 }}
@@ -387,10 +433,12 @@ const Navbar = ({ handleDrawerToggle, user, open, handleDrawerOpen, handleDrawer
             sx={{
               mr: 1,
               color: iconTextColor,
-              '&:hover': {
+              "&:hover": {
                 backgroundColor: muiTheme.custom.gradients.listItemHover,
               },
-              transition: `all ${transitionDuration}ms ${muiTheme.custom.transitions?.easing?.easeInOut ?? 'ease-in-out'}`,
+              transition: `all ${transitionDuration}ms ${
+                muiTheme.custom.transitions?.easing?.easeInOut ?? "ease-in-out"
+              }`,
             }}
           >
             <Palette />
@@ -413,20 +461,20 @@ const Navbar = ({ handleDrawerToggle, user, open, handleDrawerOpen, handleDrawer
                 onClick={() => handleColorSelect(color.value)}
                 sx={{
                   fontFamily: muiTheme.typography.fontFamily,
-                  fontSize: '0.85rem',
+                  fontSize: "0.85rem",
                   color: iconTextColor,
-                  '&:hover': {
+                  "&:hover": {
                     backgroundColor: muiTheme.custom.gradients.listItemHover,
                   },
                 }}
               >
-                <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                <Box sx={{ display: "flex", alignItems: "center" }}>
                   <Box
                     sx={{
                       width: 16,
                       height: 16,
                       backgroundColor: color.value,
-                      borderRadius: '50%',
+                      borderRadius: "50%",
                       mr: 1,
                     }}
                   />
@@ -438,13 +486,15 @@ const Navbar = ({ handleDrawerToggle, user, open, handleDrawerOpen, handleDrawer
           <Switch
             checked={isDarkMode}
             onChange={toggleTheme}
-            icon={<LightMode sx={{ color: '#ffb300' }} />}
-            checkedIcon={<DarkMode sx={{ color: muiTheme.palette.primary.main }} />}
+            icon={<LightMode sx={{ color: "#ffb300" }} />}
+            checkedIcon={
+              <DarkMode sx={{ color: muiTheme.palette.primary.main }} />
+            }
             sx={{
-              '& .MuiSwitch-track': {
+              "& .MuiSwitch-track": {
                 backgroundColor: iconTextColor,
               },
-              '& .MuiSwitch-thumb': {
+              "& .MuiSwitch-thumb": {
                 backgroundColor: muiTheme.palette.background.default,
               },
             }}
@@ -457,17 +507,20 @@ const Navbar = ({ handleDrawerToggle, user, open, handleDrawerOpen, handleDrawer
                 placement="bottom"
                 sx={{
                   fontFamily: muiTheme.typography.fontFamily,
-                  fontSize: '0.85rem',
+                  fontSize: "0.85rem",
                 }}
               >
                 <IconButton
                   onClick={handleMenu}
                   sx={{
                     p: 0,
-                    '&:hover': {
+                    "&:hover": {
                       backgroundColor: muiTheme.custom.gradients.listItemHover,
                     },
-                    transition: `all ${transitionDuration}ms ${muiTheme.custom.transitions?.easing?.easeInOut ?? 'ease-in-out'}`,
+                    transition: `all ${transitionDuration}ms ${
+                      muiTheme.custom.transitions?.easing?.easeInOut ??
+                      "ease-in-out"
+                    }`,
                   }}
                 >
                   <Avatar
@@ -498,9 +551,9 @@ const Navbar = ({ handleDrawerToggle, user, open, handleDrawerOpen, handleDrawer
                   to="/profile-settings"
                   sx={{
                     fontFamily: muiTheme.typography.fontFamily,
-                    fontSize: '0.85rem',
+                    fontSize: "0.85rem",
                     color: iconTextColor,
-                    '&:hover': {
+                    "&:hover": {
                       backgroundColor: muiTheme.custom.gradients.listItemHover,
                     },
                   }}
@@ -513,9 +566,9 @@ const Navbar = ({ handleDrawerToggle, user, open, handleDrawerOpen, handleDrawer
                   to="/account-settings"
                   sx={{
                     fontFamily: muiTheme.typography.fontFamily,
-                    fontSize: '0.85rem',
+                    fontSize: "0.85rem",
                     color: iconTextColor,
-                    '&:hover': {
+                    "&:hover": {
                       backgroundColor: muiTheme.custom.gradients.listItemHover,
                     },
                   }}
@@ -526,9 +579,9 @@ const Navbar = ({ handleDrawerToggle, user, open, handleDrawerOpen, handleDrawer
                   onClick={handleLogoutClick}
                   sx={{
                     fontFamily: muiTheme.typography.fontFamily,
-                    fontSize: '0.85rem',
+                    fontSize: "0.85rem",
                     color: iconTextColor,
-                    '&:hover': {
+                    "&:hover": {
                       backgroundColor: muiTheme.custom.gradients.listItemHover,
                     },
                   }}

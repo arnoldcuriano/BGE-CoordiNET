@@ -24,4 +24,5 @@ const PendingApprovals = ({ isDarkMode, toggleTheme }) => {
   );
 };
 
+
 export default PendingApprovals;

@@ -107,7 +107,7 @@ const Projects = () => {
               color: muiTheme.palette.text.secondary,
             }}
           >
-            Content Here
+            Content Heress
           </Typography>
         </Box>
       </Box>

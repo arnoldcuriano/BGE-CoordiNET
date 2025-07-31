@@ -28,47 +28,48 @@ import {
 import axios from "axios";
 import { useAuth } from "../context/AuthContext";
 import { useTheme } from "../context/ThemeContext";
+import { toast } from "react-toastify";
 
 const fadeIn = keyframes`
-    from {
-      opacity: 0;
-      transform: translateY(20px);
-    }
-    to {
-      opacity: 1;
-      transform: translateY(0);
-    }
-  `;
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+`;
 
 const shake = keyframes`
-    0% { transform: translateX(0); }
-    20% { transform: translateX(-10px); }
-    40% { transform: translateX(10px); }
-    60% { transform: translateX(-10px); }
-    80% { transform: translateX(10px); }
-    100% { transform: translateX(0); }
-  `;
+  0% { transform: translateX(0); }
+  20% { transform: translateX(-10px); }
+  40% { transform: translateX(10px); }
+  60% { transform: translateX(-10px); }
+  80% { transform: translateX(10px); }
+  100% { transform: translateX(0); }
+`;
 
 const underline = keyframes`
-    from {
-      width: 0;
-    }
-    to {
-      width: 100%;
-    }
-  `;
+  from {
+    width: 0;
+  }
+  to {
+    width: 100%;
+  }
+`;
 
 const bounce = keyframes`
-    0% { transform: scale(1); }
-    50% { transform: scale(1.05); }
-    100% { transform: scale(1); }
-  `;
+  0% { transform: scale(1); }
+  50% { transform: scale(1.05); }
+  100% { transform: scale(1); }
+`;
 
 const glow = keyframes`
-    0% { box-shadow: 0 0 5px rgba(52, 168, 83, 0.2); }
-    50% { box-shadow: 0 0 15px rgba(52, 168, 83, 0.5); }
-    100% { box-shadow: 0 0 5px rgba(52, 168, 83, 0.2); }
-  `;
+  0% { box-shadow: 0 0 5px rgba(52, 168, 83, 0.2); }
+  50% { box-shadow: 0 0 15px rgba(52, 168, 83, 0.5); }
+  100% { box-shadow: 0 0 5px rgba(52, 168, 83, 0.2); }
+`;
 
 const Login = () => {
   console.log("Login.js: Component function called");
@@ -180,6 +181,7 @@ const Login = () => {
       });
       const loginResponse = await login(email, password, rememberMe);
       console.log("Login.js: Login successful, response:", loginResponse);
+      toast.success("Login successful");
     } catch (error) {
       console.error(
         "Login.js: Local login error:",
@@ -190,6 +192,7 @@ const Login = () => {
         error.response?.data?.message ||
         "Login failed. Please check your credentials.";
       setMessage(errorMessage);
+      toast.error(errorMessage);
       console.log("Login.js: Error message set:", errorMessage);
       if (
         error.response?.status === 403 &&
@@ -219,12 +222,14 @@ const Login = () => {
         withCredentials: true,
       });
       console.log("Login.js: Test request response:", response.data);
+      toast.success("Health check successful");
     } catch (error) {
       console.error(
         "Login.js: Test request failed:",
         error.message,
         error.response?.data
       );
+      toast.error("Health check failed");
     }
   };
 
@@ -340,7 +345,7 @@ const Login = () => {
           sx={{
             width: { xs: "90%", sm: "85%", md: "75%" },
             background: isDarkMode
-              ? "rgba(255,  익, 255, 0.05)"
+              ? "rgba(255, 255, 255, 0.05)"
               : "rgba(255, 255, 255, 0.1)",
             backdropFilter: isDarkMode ? "blur(10px)" : "blur(15px)",
             borderRadius: "16px",
@@ -541,9 +546,7 @@ const Login = () => {
                   "& fieldset": {
                     borderColor: muiTheme?.palette?.border?.main,
                   },
-                  "&:hover fieldset": {
-                    borderColor: greenLightColor,
-                  },
+                  "&:hover fieldset": { borderColor: greenLightColor },
                   "&:hover": {
                     transform: "translateY(-2px)",
                     boxShadow: muiTheme?.custom?.shadow?.listItem,
@@ -598,9 +601,7 @@ const Login = () => {
                   "& fieldset": {
                     borderColor: muiTheme?.palette?.border?.main,
                   },
-                  "&:hover fieldset": {
-                    borderColor: greenLightColor,
-                  },
+                  "&:hover fieldset": { borderColor: greenLightColor },
                   "&:hover": {
                     transform: "translateY(-2px)",
                     boxShadow: muiTheme?.custom?.shadow?.listItem,
@@ -640,9 +641,7 @@ const Login = () => {
                     onChange={(e) => setRememberMe(e.target.checked)}
                     sx={{
                       color: muiTheme?.palette?.text?.secondary,
-                      "&.Mui-checked": {
-                        color: greenLightColor,
-                      },
+                      "&.Mui-checked": { color: greenLightColor },
                     }}
                     disabled={loading || googleLoading}
                   />
@@ -772,9 +771,7 @@ const Login = () => {
                 textDecoration: "none",
                 "&:hover": {
                   color: greenLightColor,
-                  "&:after": {
-                    animation: `${underline} 0.3s forwards`,
-                  },
+                  "&:after": { animation: `${underline} 0.3s forwards` },
                 },
                 "&:after": {
                   content: '""',
@@ -786,9 +783,7 @@ const Login = () => {
                   backgroundColor: greenLightColor,
                   transition: "width 0.3s",
                 },
-                "&:active": {
-                  animation: `${bounce} 0.3s`,
-                },
+                "&:active": { animation: `${bounce} 0.3s` },
               }}
             >
               Sign up
